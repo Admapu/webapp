@@ -30,7 +30,7 @@ export function WalletStatusClient() {
       })
       .catch((e) => {
         if (mounted) {
-          setError(e instanceof Error ? e.message : "Could not fetch on-chain status");
+          setError(e instanceof Error ? e.message : "No se pudo consultar el estado on-chain");
           setStatus(null);
         }
       })
@@ -46,9 +46,9 @@ export function WalletStatusClient() {
   return (
     <>
       {!ready ? (
-        <p>Loading Privy...</p>
+        <p>Cargando Privy...</p>
       ) : !authenticated ? (
-        <button onClick={login}>Login with wallet</button>
+        <button onClick={login}>Iniciar sesión con wallet</button>
       ) : (
         <>
           <div className="row">
@@ -56,26 +56,30 @@ export function WalletStatusClient() {
             <code>{walletAddress}</code>
           </div>
 
-          {loading && <p>Fetching on-chain status...</p>}
+          {loading && <p>Consultando estado on-chain...</p>}
           {error && <p className="error">{error}</p>}
 
           {status && (
             <>
               <div className="row">
-                <span className="label">Chilean verified</span>
-                <strong>{status.verified ? "Yes" : "No"}</strong>
+                <span className="label">Usuario chileno verificado</span>
+                <strong>{status.verified ? "Sí" : "No"}</strong>
               </div>
               <div className="row">
-                <span className="label">Age</span>
+                <span className="label">Edad</span>
                 <strong>{status.ageLabel}</strong>
               </div>
+              <div className="row">
+                <span className="label">Balance CLPc</span>
+                <strong>{status.clpcBalance}</strong>
+              </div>
               <p className="muted small">
-                Derived from verifier flags: over18={String(status.over18)}, over65={String(status.over65)}
+                Flags del verificador: mayor18={String(status.over18)}, mayor65={String(status.over65)}
               </p>
             </>
           )}
 
-          <button className="secondary" onClick={logout}>Logout</button>
+          <button className="secondary" onClick={logout}>Cerrar sesión</button>
         </>
       )}
     </>
