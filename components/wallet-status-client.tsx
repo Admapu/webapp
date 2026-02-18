@@ -62,19 +62,15 @@ export function WalletStatusClient() {
       {status && (
         <div className="status-grid">
           <div className="split-row">
-            <span className="label">Verified</span>
+            <span className="label">Verificado</span>
             <strong>{status.verified ? "true" : "false"}</strong>
-          </div>
-          <div className="split-row">
-            <span className="label">Over18</span>
-            <strong>{status.over18 ? "true" : "false"}</strong>
           </div>
           <div className="split-row">
             <span className="label">Edad</span>
             <strong>{status.ageLabel}</strong>
           </div>
           <div className="split-row balance-row">
-            <span className="label">CLPc Balance</span>
+            <span className="label">Saldo CLPc</span>
             <strong className="balance-value">{status.clpcBalance} CLP</strong>
           </div>
           <p className="muted small">
