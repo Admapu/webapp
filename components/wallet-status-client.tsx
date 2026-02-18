@@ -43,45 +43,47 @@ export function WalletStatusClient() {
     };
   }, [authenticated, walletAddress]);
 
+  if (!ready) return <p>Cargando Privy...</p>;
+
+  if (!authenticated) {
+    return <button onClick={login}>Iniciar sesión con wallet</button>;
+  }
+
   return (
     <>
-      {!ready ? (
-        <p>Cargando Privy...</p>
-      ) : !authenticated ? (
-        <button onClick={login}>Iniciar sesión con wallet</button>
-      ) : (
-        <>
-          <div className="row">
-            <span className="label">Wallet</span>
-            <code>{walletAddress}</code>
+      <div className="split-row wallet-row">
+        <span className="label">Wallet</span>
+        <code>{walletAddress}</code>
+      </div>
+
+      {loading && <p>Consultando estado on-chain...</p>}
+      {error && <p className="error">{error}</p>}
+
+      {status && (
+        <div className="status-grid">
+          <div className="split-row">
+            <span className="label">Verified</span>
+            <strong>{status.verified ? "true" : "false"}</strong>
           </div>
-
-          {loading && <p>Consultando estado on-chain...</p>}
-          {error && <p className="error">{error}</p>}
-
-          {status && (
-            <>
-              <div className="row">
-                <span className="label">Usuario chileno verificado</span>
-                <strong>{status.verified ? "Sí" : "No"}</strong>
-              </div>
-              <div className="row">
-                <span className="label">Edad</span>
-                <strong>{status.ageLabel}</strong>
-              </div>
-              <div className="row">
-                <span className="label">Balance CLPc</span>
-                <strong>{status.clpcBalance}</strong>
-              </div>
-              <p className="muted small">
-                Flags del verificador: mayor18={String(status.over18)}, mayor65={String(status.over65)}
-              </p>
-            </>
-          )}
-
-          <button className="secondary" onClick={logout}>Cerrar sesión</button>
-        </>
+          <div className="split-row">
+            <span className="label">Over18</span>
+            <strong>{status.over18 ? "true" : "false"}</strong>
+          </div>
+          <div className="split-row">
+            <span className="label">Edad</span>
+            <strong>{status.ageLabel}</strong>
+          </div>
+          <div className="split-row balance-row">
+            <span className="label">CLPc Balance</span>
+            <strong className="balance-value">{status.clpcBalance} CLP</strong>
+          </div>
+          <p className="muted small">
+            Flags del verificador: mayor18={String(status.over18)}, mayor65={String(status.over65)}
+          </p>
+        </div>
       )}
+
+      <button className="secondary" onClick={logout}>Cerrar sesión</button>
     </>
   );
 }
