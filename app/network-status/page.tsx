@@ -19,7 +19,6 @@ export default async function NetworkStatusPage() {
             <div className="lock-badge" aria-hidden="true">🌐</div>
             <div>
               <h1>Estado de red y verificación</h1>
-              <p className="muted">Vista pública sin login (Sepolia).</p>
             </div>
           </div>
 
@@ -35,18 +34,8 @@ export default async function NetworkStatusPage() {
             </div>
 
             <div className="split-row">
-              <span className="label">mintingPaused (check-status)</span>
+              <span className="label">Minting Paused (check-status)</span>
               <strong>{String(status.mintingPaused)}</strong>
-            </div>
-
-            <div className="split-row">
-              <span className="label">Usuarios verificados (list-added)</span>
-              <strong>{status.verifiedEvents}</strong>
-            </div>
-
-            <div className="split-row">
-              <span className="label">Usuarios revocados (list-revoked)</span>
-              <strong>{status.revokedEvents}</strong>
             </div>
 
             <div className="split-row">
@@ -60,7 +49,7 @@ export default async function NetworkStatusPage() {
             </div>
 
             <p className="muted small">
-              Rango de logs consultado desde bloque {status.fromBlock.toString()}.
+              Rango de logs consultado on-chain desde bloque {status.fromBlock.toString()}.
             </p>
           </div>
 

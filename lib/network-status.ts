@@ -29,7 +29,7 @@ function getFromBlock(): bigint {
   const raw =
     process.env.SEPOLIA_FROM_BLOCK ??
     process.env.NEXT_PUBLIC_SEPOLIA_FROM_BLOCK ??
-    "9981114";
+    "10320000";
 
   try {
     return BigInt(raw);
