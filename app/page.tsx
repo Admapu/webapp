@@ -25,6 +25,10 @@ export default function HomePage() {
         ) : (
           <WalletStatusClient />
         )}
+
+        <div className="actions-row">
+          <a className="link-button" href="/network-status">Ver estado público de red</a>
+        </div>
       </section>
     </main>
   );
