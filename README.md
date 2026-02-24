@@ -30,6 +30,7 @@ Variables:
 - `NEXT_PUBLIC_CLPC_TOKEN_ADDRESS`
 - `NEXT_PUBLIC_CLPC_CLAIM_ADDRESS` (referencia)
 - `NEXT_PUBLIC_SEPOLIA_RPC_URL` (opcional)
+- `NEXT_PUBLIC_SEPOLIA_FROM_BLOCK` (opcional, default `9981114`)
 
 Direcciones Sepolia actuales:
 
@@ -45,6 +46,13 @@ npm run dev
 ```
 
 Abrir: `http://localhost:3000`
+
+Endpoint/página pública nueva (sin login Privy):
+
+- `http://localhost:3000/network-status`
+  - estado de red + `mintingPaused` (similar a `make check-status`)
+  - cantidad de eventos `AddressVerified` (similar a `make list-added`)
+  - cantidad de eventos `VerificationRevoked` (similar a `make list-revoked`)
 
 ## Build Next.js (local)
 

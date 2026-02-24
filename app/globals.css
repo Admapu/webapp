@@ -162,6 +162,24 @@ button.secondary {
   background: rgba(38, 52, 95, 0.88);
 }
 
+.actions-row {
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(38, 52, 95, 0.88);
+  color: #fff;
+  padding: 0.65rem 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .error {
   color: #ffb3b3;
 }
