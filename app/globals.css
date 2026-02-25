@@ -158,6 +158,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 button.secondary {
   background: rgba(38, 52, 95, 0.88);
 }
@@ -182,6 +187,10 @@ button.secondary {
 
 .error {
   color: #ffb3b3;
+}
+
+.success {
+  color: #b4ffd5;
 }
 
 @media (max-width: 640px) {

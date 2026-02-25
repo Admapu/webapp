@@ -5,6 +5,7 @@ Webapp mínima para conectar wallet y mostrar:
 1. Si el usuario está verificado como chileno
 2. El rango de edad del usuario
 3. El balance de CLPc de la wallet
+4. Botón de claim único (`claim()`) para CLPc
 
 Stack: **Next.js + Privy + viem**, preparado para deploy en **Cloudflare Workers** con **OpenNext**.
 
@@ -37,6 +38,11 @@ Direcciones Sepolia actuales:
 - Verifier: `0xD51F4F3D2c35E51FD4Fda03D4Ae8A251801C9c94`
 - Token: `0xfb43d4e4dBB4c444e7Dcd73A86e836EC7607f553`
 - Claim: `0xe1c2dB0ea79f8b91991aC789E32A35E39D7d1fF7`
+
+Claim en UI:
+- El botón **Claim CLPc** aparece al iniciar sesión.
+- Está habilitado solo para usuarios verificados.
+- Requiere `NEXT_PUBLIC_CLPC_CLAIM_ADDRESS` configurado.
 
 ## Desarrollo local
 
