@@ -11,6 +11,7 @@ import {
   http,
   recoverTypedDataAddress,
 } from "viem";
+
 import { sepolia } from "viem/chains";
 import { fetchUserStatus, type UserStatus } from "@/lib/verifier";
 
@@ -33,6 +34,7 @@ const forwarderAbi = [
     type: "function",
   },
 ] as const;
+
 
 export function WalletStatusClient() {
   const { ready, authenticated, login, logout } = usePrivy();
@@ -90,6 +92,7 @@ export function WalletStatusClient() {
       return;
     }
 
+
     try {
       setClaiming(true);
       setClaimMessage(null);
@@ -104,6 +107,7 @@ export function WalletStatusClient() {
               request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
             });
       const claimData = encodeFunctionData({
+
         abi: claimAbi,
         functionName: "claim",
       });
@@ -122,6 +126,7 @@ export function WalletStatusClient() {
         method: "eth_requestAccounts",
       })) as string[];
       const signerAddress = getAddress(accounts[0]);
+
 
       const client = createPublicClient({
         chain: sepolia,
@@ -237,6 +242,7 @@ export function WalletStatusClient() {
       await refreshStatus(walletAddress);
     } catch (e) {
       const message = e instanceof Error ? e.message : "No se pudo ejecutar claim por relay";
+
       setClaimMessage(`❌ ${message}`);
     } finally {
       setClaiming(false);
