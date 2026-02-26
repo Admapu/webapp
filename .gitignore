@@ -5,3 +5,4 @@ out
 !.env.example
 
 .open-next/
+.tsconfig.tsbuildinfo

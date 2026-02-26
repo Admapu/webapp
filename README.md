@@ -5,7 +5,7 @@ Webapp mínima para conectar wallet y mostrar:
 1. Si el usuario está verificado como chileno
 2. El rango de edad del usuario
 3. El balance de CLPc de la wallet
-4. Botón de claim único (`claim()`) para CLPc
+4. Botón de claim único (meta-tx ERC-2771) para CLPc
 
 Stack: **Next.js + Privy + viem**, preparado para deploy en **Cloudflare Workers** con **OpenNext**.
 
@@ -29,7 +29,10 @@ Variables:
 - `NEXT_PUBLIC_PRIVY_APP_ID`
 - `NEXT_PUBLIC_VERIFIER_ADDRESS`
 - `NEXT_PUBLIC_CLPC_TOKEN_ADDRESS`
-- `NEXT_PUBLIC_CLPC_CLAIM_ADDRESS` (referencia)
+- `NEXT_PUBLIC_CLPC_CLAIM_ADDRESS`
+- `NEXT_PUBLIC_FORWARDER_ADDRESS`
+- `NEXT_PUBLIC_FORWARDER_NAME` (default `AdmapuForwarder`)
+- `RELAYER_PRIVATE_KEY` (solo backend)
 - `NEXT_PUBLIC_SEPOLIA_RPC_URL` (opcional)
 - `NEXT_PUBLIC_SEPOLIA_FROM_BLOCK` (opcional, default `9981114`)
 
@@ -42,7 +45,8 @@ Direcciones Sepolia actuales:
 Claim en UI:
 - El botón **Claim CLPc** aparece al iniciar sesión.
 - Está habilitado solo para usuarios verificados.
-- Requiere `NEXT_PUBLIC_CLPC_CLAIM_ADDRESS` configurado.
+- Requiere `NEXT_PUBLIC_CLPC_CLAIM_ADDRESS`, `NEXT_PUBLIC_FORWARDER_ADDRESS` y `RELAYER_PRIVATE_KEY`.
+- El usuario firma typed data y el backend relayer paga gas vía `ERC2771Forwarder`.
 
 ## Desarrollo local
 
@@ -102,6 +106,10 @@ Si usarás CI, define estos secretos/variables:
 - `NEXT_PUBLIC_PRIVY_APP_ID`
 - `NEXT_PUBLIC_VERIFIER_ADDRESS`
 - `NEXT_PUBLIC_CLPC_TOKEN_ADDRESS`
+- `NEXT_PUBLIC_CLPC_CLAIM_ADDRESS`
+- `NEXT_PUBLIC_FORWARDER_ADDRESS`
+- `NEXT_PUBLIC_FORWARDER_NAME`
+- `RELAYER_PRIVATE_KEY`
 - `NEXT_PUBLIC_SEPOLIA_RPC_URL` (opcional)
 
 > Nota: Para este proyecto la ruta de entrada del Worker es `.open-next/worker.js` (configurado en `wrangler.jsonc`).
