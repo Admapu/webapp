@@ -253,14 +253,6 @@ button.secondary {
   text-overflow: ellipsis;
 }
 
-.tx-exec-meta {
-  font-size: 0.8rem;
-  color: #c5d3f1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .tx-link {
   color: #9cc2ff;
   text-decoration: none;
