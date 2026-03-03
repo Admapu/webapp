@@ -193,6 +193,64 @@ button.secondary {
   color: #b4ffd5;
 }
 
+.tx-history {
+  margin-top: 1rem;
+  border-top: 1px solid rgba(122, 170, 255, 0.25);
+  padding-top: 0.8rem;
+}
+
+.tx-history h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.tx-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.tx-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid rgba(122, 170, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(15, 21, 48, 0.35);
+}
+
+.tx-badge {
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+}
+
+.tx-badge.in {
+  color: #b4ffd5;
+  background: rgba(64, 178, 118, 0.2);
+}
+
+.tx-badge.out {
+  color: #ffd2b0;
+  background: rgba(191, 106, 64, 0.2);
+}
+
+.tx-amount {
+  font-weight: 600;
+}
+
+.tx-counterparty {
+  min-width: 0;
+}
+
+.tx-link {
+  color: #9cc2ff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
 @media (max-width: 640px) {
   .glass-card {
     padding: 1rem;
@@ -205,5 +263,10 @@ button.secondary {
 
   .balance-value {
     font-size: 1.4rem;
+  }
+
+  .tx-row {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
   }
 }

@@ -13,7 +13,7 @@ import {
 } from "viem";
 
 import { sepolia } from "viem/chains";
-import { fetchUserStatus, type UserStatus } from "@/lib/verifier";
+import { fetchUserStatus, fetchUserTransfers, type UserStatus, type UserTransfer } from "@/lib/verifier";
 
 const claimAbi = [
   {
@@ -42,6 +42,8 @@ export function WalletStatusClient() {
   const [status, setStatus] = useState<UserStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [loadingTxs, setLoadingTxs] = useState(false);
+  const [transfers, setTransfers] = useState<UserTransfer[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [claimMessage, setClaimMessage] = useState<string | null>(null);
 
@@ -54,22 +56,30 @@ export function WalletStatusClient() {
 
   async function refreshStatus(address: string) {
     setLoading(true);
+    setLoadingTxs(true);
     setError(null);
 
     try {
-      const result = await fetchUserStatus(address);
+      const [result, txs] = await Promise.all([
+        fetchUserStatus(address),
+        fetchUserTransfers(address),
+      ]);
       setStatus(result);
+      setTransfers(txs);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo consultar el estado on-chain");
       setStatus(null);
+      setTransfers([]);
     } finally {
       setLoading(false);
+      setLoadingTxs(false);
     }
   }
 
   useEffect(() => {
     if (!authenticated || !walletAddress) {
       setStatus(null);
+      setTransfers([]);
       setError(null);
       return;
     }
@@ -286,6 +296,35 @@ export function WalletStatusClient() {
       )}
 
       {claimMessage && <p className={claimMessage.startsWith("✅") ? "success" : "error"}>{claimMessage}</p>}
+
+      <div className="tx-history">
+        <h3>Historial de transacciones</h3>
+        {loadingTxs ? (
+          <p className="muted small">Cargando transacciones...</p>
+        ) : transfers.length === 0 ? (
+          <p className="muted small">
+            Sin transacciones desde el bloque {process.env.NEXT_PUBLIC_TX_HISTORY_FROM_BLOCK ?? "10320000"}.
+          </p>
+        ) : (
+          <div className="tx-list">
+            {transfers.map((tx, idx) => (
+              <div className="tx-row" key={`${tx.txHash}-${tx.direction}-${idx}`}>
+                <span className={`tx-badge ${tx.direction}`}>{tx.direction === "in" ? "IN" : "OUT"}</span>
+                <span className="tx-amount">{tx.amount} CLP</span>
+                <code className="tx-counterparty">{tx.counterparty}</code>
+                <a
+                  className="tx-link"
+                  href={`https://sepolia.etherscan.io/tx/${tx.txHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  tx
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="actions-row">
         <button
