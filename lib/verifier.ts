@@ -43,8 +43,22 @@ const erc20Abi = [
 ] as const;
 
 const transferEvent = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 value)");
-const TX_HISTORY_FROM_BLOCK = BigInt("10320000");
-const TX_HISTORY_LIMIT = 50;
+
+function getTxHistoryFromBlock(): bigint {
+  const raw = process.env.NEXT_PUBLIC_TX_HISTORY_FROM_BLOCK ?? "10320000";
+  try {
+    return BigInt(raw);
+  } catch {
+    return BigInt("10320000");
+  }
+}
+
+function getTxHistoryLimit(): number {
+  const raw = process.env.NEXT_PUBLIC_TX_HISTORY_LIMIT ?? "10";
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 10;
+  return parsed;
+}
 
 export type UserStatus = {
   verified: boolean;
@@ -138,6 +152,8 @@ export async function fetchUserTransfers(userAddress: string): Promise<UserTrans
 
   const user = getAddress(userAddress);
   const token = getAddress(tokenAddress);
+  const fromBlock = getTxHistoryFromBlock();
+  const limit = getTxHistoryLimit();
 
   const [decimals, incoming, outgoing] = await Promise.all([
     client.readContract({
@@ -149,14 +165,14 @@ export async function fetchUserTransfers(userAddress: string): Promise<UserTrans
       address: token,
       event: transferEvent,
       args: { to: user },
-      fromBlock: TX_HISTORY_FROM_BLOCK,
+      fromBlock,
       toBlock: "latest",
     }),
     client.getLogs({
       address: token,
       event: transferEvent,
       args: { from: user },
-      fromBlock: TX_HISTORY_FROM_BLOCK,
+      fromBlock,
       toBlock: "latest",
     }),
   ]);
@@ -184,5 +200,5 @@ export async function fetchUserTransfers(userAddress: string): Promise<UserTrans
     return 0;
   });
 
-  return mapped.slice(0, TX_HISTORY_LIMIT);
+  return mapped.slice(0, limit);
 }

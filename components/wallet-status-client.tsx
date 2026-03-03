@@ -302,7 +302,9 @@ export function WalletStatusClient() {
         {loadingTxs ? (
           <p className="muted small">Cargando transacciones...</p>
         ) : transfers.length === 0 ? (
-          <p className="muted small">Sin transacciones desde el bloque 10320000.</p>
+          <p className="muted small">
+            Sin transacciones desde el bloque {process.env.NEXT_PUBLIC_TX_HISTORY_FROM_BLOCK ?? "10320000"}.
+          </p>
         ) : (
           <div className="tx-list">
             {transfers.map((tx, idx) => (
