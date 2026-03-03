@@ -241,8 +241,24 @@ button.secondary {
   font-weight: 600;
 }
 
-.tx-counterparty {
+.tx-exec {
+  display: grid;
   min-width: 0;
+}
+
+.tx-exec-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tx-exec-meta {
+  font-size: 0.8rem;
+  color: #c5d3f1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tx-link {
