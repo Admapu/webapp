@@ -7,8 +7,10 @@ import {
   createWalletClient,
   custom,
   encodeFunctionData,
+  formatUnits,
   getAddress,
   http,
+  parseUnits,
   recoverTypedDataAddress,
 } from "viem";
 
@@ -35,6 +37,25 @@ const forwarderAbi = [
   },
 ] as const;
 
+const tokenAbi = [
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [{ name: "", type: "uint8" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "value", type: "uint256" },
+    ],
+    name: "transfer",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
 
 export function WalletStatusClient() {
   const { ready, authenticated, login, logout } = usePrivy();
@@ -42,6 +63,8 @@ export function WalletStatusClient() {
   const [status, setStatus] = useState<UserStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [openingReceive, setOpeningReceive] = useState(false);
   const [loadingTxs, setLoadingTxs] = useState(false);
   const [transfers, setTransfers] = useState<UserTransfer[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +72,7 @@ export function WalletStatusClient() {
 
   const wallet = useMemo(() => wallets[0], [wallets]);
   const walletAddress = useMemo(() => wallet?.address, [wallet]);
+  const tokenAddress = process.env.NEXT_PUBLIC_CLPC_TOKEN_ADDRESS;
   const claimAddress = process.env.NEXT_PUBLIC_CLPC_CLAIM_ADDRESS;
   const forwarderAddress = process.env.NEXT_PUBLIC_FORWARDER_ADDRESS;
   const forwarderName = process.env.NEXT_PUBLIC_FORWARDER_NAME ?? "AdmapuForwarder";
@@ -111,10 +135,10 @@ export function WalletStatusClient() {
       const provider =
         typeof window !== "undefined" && (window as { ethereum?: unknown }).ethereum
           ? ((window as { ethereum?: unknown }).ethereum as {
-              request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+              request: (args: { method: string; params?: unknown }) => Promise<unknown>;
             })
           : ((await wallet.getEthereumProvider()) as {
-              request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+              request: (args: { method: string; params?: unknown }) => Promise<unknown>;
             });
       const claimData = encodeFunctionData({
 
@@ -259,6 +283,129 @@ export function WalletStatusClient() {
     }
   }
 
+  async function handleSendCLPc() {
+    if (!walletAddress || !wallet) {
+      setClaimMessage("No hay wallet conectada.");
+      return;
+    }
+    if (!tokenAddress) {
+      setClaimMessage("Falta NEXT_PUBLIC_CLPC_TOKEN_ADDRESS.");
+      return;
+    }
+
+    const toInput = window.prompt("Dirección destino (0x...):");
+    if (!toInput) return;
+
+    const amountInput = window.prompt("Monto CLPc a enviar (ej: 10.5):");
+    if (!amountInput) return;
+
+    try {
+      setSending(true);
+      setClaimMessage(null);
+
+      const provider =
+        typeof window !== "undefined" && (window as { ethereum?: unknown }).ethereum
+          ? ((window as { ethereum?: unknown }).ethereum as {
+              request: (args: { method: string; params?: unknown }) => Promise<unknown>;
+            })
+          : ((await wallet.getEthereumProvider()) as {
+              request: (args: { method: string; params?: unknown }) => Promise<unknown>;
+            });
+
+      const chainHex = await provider.request({ method: "eth_chainId" });
+      const chainId = Number.parseInt(String(chainHex), 16);
+      if (chainId !== sepolia.id) {
+        await provider.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: `0x${sepolia.id.toString(16)}` }],
+        });
+      }
+
+      const client = createPublicClient({
+        chain: sepolia,
+        transport: rpc ? http(rpc) : http(),
+      });
+      const decimals = await client.readContract({
+        address: getAddress(tokenAddress),
+        abi: tokenAbi,
+        functionName: "decimals",
+      });
+
+      const to = getAddress(toInput.trim());
+      const amountBase = parseUnits(amountInput.trim(), decimals);
+      const transferData = encodeFunctionData({
+        abi: tokenAbi,
+        functionName: "transfer",
+        args: [to, amountBase],
+      });
+
+      const hash = await provider.request({
+        method: "eth_sendTransaction",
+        params: [
+          {
+            from: walletAddress,
+            to: getAddress(tokenAddress),
+            data: transferData,
+          },
+        ],
+      });
+
+      await client.waitForTransactionReceipt({ hash: hash as `0x${string}` });
+      setClaimMessage(`✅ Envío realizado: ${formatUnits(amountBase, decimals)} CLP`);
+      await refreshStatus(walletAddress);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "No se pudo enviar CLPc";
+      setClaimMessage(`❌ ${message}`);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handleReceiveCLPc() {
+    if (!walletAddress || !wallet) {
+      setClaimMessage("No hay wallet conectada.");
+      return;
+    }
+
+    try {
+      setOpeningReceive(true);
+      const provider =
+        typeof window !== "undefined" && (window as { ethereum?: unknown }).ethereum
+          ? ((window as { ethereum?: unknown }).ethereum as {
+              request: (args: { method: string; params?: unknown }) => Promise<unknown>;
+            })
+          : ((await wallet.getEthereumProvider()) as {
+              request: (args: { method: string; params?: unknown }) => Promise<unknown>;
+            });
+
+      await provider.request({ method: "eth_requestAccounts" });
+
+      if (tokenAddress) {
+        await provider.request({
+          method: "wallet_watchAsset",
+          params: {
+            type: "ERC20",
+            options: {
+              address: getAddress(tokenAddress),
+              symbol: "CLPc",
+              decimals: 8,
+            },
+          },
+        });
+      }
+
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(walletAddress);
+      }
+      setClaimMessage("✅ Wallet abierto. Tu dirección fue copiada para recibir CLPc.");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "No se pudo abrir wallet";
+      setClaimMessage(`❌ ${message}`);
+    } finally {
+      setOpeningReceive(false);
+    }
+  }
+
   if (!ready) return <p>Cargando Privy...</p>;
 
   if (!authenticated) {
@@ -327,6 +474,14 @@ export function WalletStatusClient() {
       </div>
 
       <div className="actions-row">
+        <button onClick={handleSendCLPc} disabled={sending || !status?.verified}>
+          {sending ? "Abriendo wallet..." : "Enviar CLPc"}
+        </button>
+
+        <button className="secondary" onClick={handleReceiveCLPc} disabled={openingReceive}>
+          {openingReceive ? "Abriendo wallet..." : "Recibir CLPc"}
+        </button>
+
         <button
           onClick={handleClaim}
           disabled={claiming || !status?.verified}
