@@ -101,6 +101,15 @@ type RelayClaimRequest = {
   signature?: string;
 };
 
+function friendlyRelayError(message: string): { status: number; error: string } {
+  // ClaimCLPc.AlreadyClaimed(address) bubbling through ERC2771Forwarder.execute
+  if (message.includes("0x1425ea42")) {
+    return { status: 409, error: "One-time claim already executed for this wallet." };
+  }
+
+  return { status: 500, error: message };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const relayPk = process.env.RELAYER_PRIVATE_KEY as `0x${string}` | undefined;
@@ -242,6 +251,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ txHash: hash });
   } catch (error) {
     const message = error instanceof Error ? error.message : "relay failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const friendly = friendlyRelayError(message);
+    return NextResponse.json({ error: friendly.error }, { status: friendly.status });
   }
 }
