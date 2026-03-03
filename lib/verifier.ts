@@ -1,4 +1,4 @@
-import { createPublicClient, formatUnits, getAddress, http } from "viem";
+import { createPublicClient, formatUnits, getAddress, http, parseAbiItem } from "viem";
 import { sepolia } from "viem/chains";
 
 const verifierAbi = [
@@ -42,12 +42,24 @@ const erc20Abi = [
   },
 ] as const;
 
+const transferEvent = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 value)");
+const TX_HISTORY_FROM_BLOCK = BigInt("10320000");
+const TX_HISTORY_LIMIT = 50;
+
 export type UserStatus = {
   verified: boolean;
   over18: boolean;
   over65: boolean;
   ageLabel: string;
   clpcBalance: string;
+};
+
+export type UserTransfer = {
+  txHash: `0x${string}`;
+  blockNumber: bigint;
+  direction: "in" | "out";
+  counterparty: `0x${string}`;
+  amount: string;
 };
 
 export async function fetchUserStatus(userAddress: string): Promise<UserStatus> {
@@ -110,4 +122,67 @@ export async function fetchUserStatus(userAddress: string): Promise<UserStatus> 
   }
 
   return { verified, over18, over65, ageLabel, clpcBalance };
+}
+
+export async function fetchUserTransfers(userAddress: string): Promise<UserTransfer[]> {
+  const tokenAddress = process.env.NEXT_PUBLIC_CLPC_TOKEN_ADDRESS;
+  if (!tokenAddress) {
+    return [];
+  }
+
+  const rpc = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL;
+  const client = createPublicClient({
+    chain: sepolia,
+    transport: rpc ? http(rpc) : http(),
+  });
+
+  const user = getAddress(userAddress);
+  const token = getAddress(tokenAddress);
+
+  const [decimals, incoming, outgoing] = await Promise.all([
+    client.readContract({
+      address: token,
+      abi: erc20Abi,
+      functionName: "decimals",
+    }),
+    client.getLogs({
+      address: token,
+      event: transferEvent,
+      args: { to: user },
+      fromBlock: TX_HISTORY_FROM_BLOCK,
+      toBlock: "latest",
+    }),
+    client.getLogs({
+      address: token,
+      event: transferEvent,
+      args: { from: user },
+      fromBlock: TX_HISTORY_FROM_BLOCK,
+      toBlock: "latest",
+    }),
+  ]);
+
+  const mapped: UserTransfer[] = [
+    ...incoming.map((log) => ({
+      txHash: log.transactionHash,
+      blockNumber: log.blockNumber,
+      direction: "in" as const,
+      counterparty: getAddress(log.args.from ?? user),
+      amount: formatUnits(log.args.value ?? BigInt(0), decimals),
+    })),
+    ...outgoing.map((log) => ({
+      txHash: log.transactionHash,
+      blockNumber: log.blockNumber,
+      direction: "out" as const,
+      counterparty: getAddress(log.args.to ?? user),
+      amount: formatUnits(log.args.value ?? BigInt(0), decimals),
+    })),
+  ];
+
+  mapped.sort((a, b) => {
+    if (a.blockNumber > b.blockNumber) return -1;
+    if (a.blockNumber < b.blockNumber) return 1;
+    return 0;
+  });
+
+  return mapped.slice(0, TX_HISTORY_LIMIT);
 }
