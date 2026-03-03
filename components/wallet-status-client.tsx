@@ -311,7 +311,9 @@ export function WalletStatusClient() {
               <div className="tx-row" key={`${tx.txHash}-${tx.direction}-${idx}`}>
                 <span className={`tx-badge ${tx.direction}`}>{tx.direction === "in" ? "IN" : "OUT"}</span>
                 <span className="tx-amount">{tx.amount} CLP</span>
-                <code className="tx-counterparty">{tx.counterparty}</code>
+                <div className="tx-exec">
+                  <span className="tx-exec-title">ERC-20: Chilean Peso Coin (CLPc)</span>
+                </div>
                 <a
                   className="tx-link"
                   href={`https://sepolia.etherscan.io/tx/${tx.txHash}`}
