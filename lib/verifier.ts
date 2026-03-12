@@ -72,7 +72,8 @@ export type UserTransfer = {
   txHash: `0x${string}`;
   blockNumber: bigint;
   direction: "in" | "out";
-  counterparty: `0x${string}`;
+  from: `0x${string}`;
+  to: `0x${string}`;
   amount: string;
 };
 
@@ -182,14 +183,16 @@ export async function fetchUserTransfers(userAddress: string): Promise<UserTrans
       txHash: log.transactionHash,
       blockNumber: log.blockNumber,
       direction: "in" as const,
-      counterparty: getAddress(log.args.from ?? user),
+      from: getAddress(log.args.from ?? "0x0000000000000000000000000000000000000000"),
+      to: getAddress(log.args.to ?? user),
       amount: formatUnits(log.args.value ?? BigInt(0), decimals),
     })),
     ...outgoing.map((log) => ({
       txHash: log.transactionHash,
       blockNumber: log.blockNumber,
       direction: "out" as const,
-      counterparty: getAddress(log.args.to ?? user),
+      from: getAddress(log.args.from ?? user),
+      to: getAddress(log.args.to ?? "0x0000000000000000000000000000000000000000"),
       amount: formatUnits(log.args.value ?? BigInt(0), decimals),
     })),
   ];
