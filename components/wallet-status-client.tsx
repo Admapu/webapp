@@ -108,14 +108,9 @@ export function WalletStatusClient() {
       setClaimMessage(null);
       setError(null);
 
-      const provider =
-        typeof window !== "undefined" && (window as { ethereum?: unknown }).ethereum
-          ? ((window as { ethereum?: unknown }).ethereum as {
-              request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-            })
-          : ((await wallet.getEthereumProvider()) as {
-              request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-            });
+      const provider = (await wallet.getEthereumProvider()) as {
+        request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      };
       const claimData = encodeFunctionData({
 
         abi: claimAbi,
@@ -136,6 +131,13 @@ export function WalletStatusClient() {
         method: "eth_requestAccounts",
       })) as string[];
       const signerAddress = getAddress(accounts[0]);
+      const connectedWalletAddress = getAddress(walletAddress);
+
+      if (signerAddress !== connectedWalletAddress) {
+        throw new Error(
+          `La firma se intentó con otra cuenta. wallet=${connectedWalletAddress} signer=${signerAddress}`
+        );
+      }
 
 
       const client = createPublicClient({
