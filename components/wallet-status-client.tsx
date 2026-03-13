@@ -3,17 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import {
-  createPublicClient,
   createWalletClient,
   custom,
   encodeFunctionData,
   getAddress,
-  http,
   recoverTypedDataAddress,
 } from "viem";
 
 import { sepolia } from "viem/chains";
-import { fetchUserStatus, fetchUserTransfers, type UserStatus, type UserTransfer } from "@/lib/verifier";
+import { type UserStatus, type UserTransfer, type WalletSnapshot } from "@/lib/abi";
 
 const claimAbi = [
   {
@@ -25,16 +23,33 @@ const claimAbi = [
   },
 ] as const;
 
-const forwarderAbi = [
-  {
-    inputs: [{ name: "owner", type: "address" }],
-    name: "nonces",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+const walletSnapshotRequests = new Map<string, Promise<WalletSnapshot>>();
 
+async function fetchWalletSnapshot(address: string): Promise<WalletSnapshot> {
+  const normalizedAddress = getAddress(address);
+  const existing = walletSnapshotRequests.get(normalizedAddress);
+  if (existing) {
+    return existing;
+  }
+
+  const request = fetch(`/api/wallet-status/${normalizedAddress}`, {
+    cache: "no-store",
+  }).then(async (res) => {
+    const body = (await res.json()) as WalletSnapshot & { error?: string };
+    if (!res.ok) {
+      throw new Error(body.error ?? "No se pudo consultar el estado on-chain");
+    }
+    return body;
+  });
+
+  walletSnapshotRequests.set(normalizedAddress, request);
+
+  try {
+    return await request;
+  } finally {
+    walletSnapshotRequests.delete(normalizedAddress);
+  }
+}
 
 export function WalletStatusClient() {
   const { ready, authenticated, login, logout } = usePrivy();
@@ -52,7 +67,6 @@ export function WalletStatusClient() {
   const claimAddress = process.env.NEXT_PUBLIC_CLPC_CLAIM_ADDRESS;
   const forwarderAddress = process.env.NEXT_PUBLIC_FORWARDER_ADDRESS;
   const forwarderName = process.env.NEXT_PUBLIC_FORWARDER_NAME ?? "AdmapuForwarder";
-  const rpc = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL;
 
   async function refreshStatus(address: string) {
     setLoading(true);
@@ -60,12 +74,9 @@ export function WalletStatusClient() {
     setError(null);
 
     try {
-      const [result, txs] = await Promise.all([
-        fetchUserStatus(address),
-        fetchUserTransfers(address),
-      ]);
-      setStatus(result);
-      setTransfers(txs);
+      const result = await fetchWalletSnapshot(address);
+      setStatus(result.status);
+      setTransfers(result.transfers);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo consultar el estado on-chain");
       setStatus(null);
@@ -102,7 +113,6 @@ export function WalletStatusClient() {
       return;
     }
 
-
     try {
       setClaiming(true);
       setClaimMessage(null);
@@ -112,7 +122,6 @@ export function WalletStatusClient() {
         request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
       };
       const claimData = encodeFunctionData({
-
         abi: claimAbi,
         functionName: "claim",
       });
@@ -139,17 +148,14 @@ export function WalletStatusClient() {
         );
       }
 
-
-      const client = createPublicClient({
-        chain: sepolia,
-        transport: rpc ? http(rpc) : http(),
+      const prepareRes = await fetch(`/api/claim/prepare?address=${signerAddress}`, {
+        cache: "no-store",
       });
-      const nonce = await client.readContract({
-        address: getAddress(forwarderAddress),
-        abi: forwarderAbi,
-        functionName: "nonces",
-        args: [signerAddress],
-      });
+      const prepareBody = (await prepareRes.json()) as { nonce?: string; error?: string };
+      if (!prepareRes.ok || !prepareBody.nonce) {
+        throw new Error(prepareBody.error ?? "No se pudo preparar el claim");
+      }
+      const nonce = BigInt(prepareBody.nonce);
 
       const gas = BigInt(300_000);
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
@@ -245,10 +251,6 @@ export function WalletStatusClient() {
           : "";
         throw new Error(`${relayBody.error ?? "No se pudo relayer la transaccion"}${debug}`);
       }
-
-      await client.waitForTransactionReceipt({
-        hash: relayBody.txHash as `0x${string}`,
-      });
 
       setClaimMessage("✅ Claim ejecutado por relayer (usuario sin gas).");
       await refreshStatus(walletAddress);

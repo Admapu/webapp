@@ -33,7 +33,7 @@ Variables:
 - `NEXT_PUBLIC_FORWARDER_ADDRESS`
 - `NEXT_PUBLIC_FORWARDER_NAME` (default `AdmapuForwarder`)
 - `RELAYER_PRIVATE_KEY` (solo backend)
-- `NEXT_PUBLIC_SEPOLIA_RPC_URL` (opcional)
+- `SEPOLIA_RPC_URL` (opcional, solo server-side)
 - `NEXT_PUBLIC_SEPOLIA_FROM_BLOCK` (opcional, default `9981114`)
 - `NEXT_PUBLIC_TX_HISTORY_FROM_BLOCK` (opcional, default `10320000`)
 - `NEXT_PUBLIC_TX_HISTORY_LIMIT` (opcional, default `10`)
@@ -112,6 +112,6 @@ Si usarás CI, define estos secretos/variables:
 - `NEXT_PUBLIC_FORWARDER_ADDRESS`
 - `NEXT_PUBLIC_FORWARDER_NAME`
 - `RELAYER_PRIVATE_KEY`
-- `NEXT_PUBLIC_SEPOLIA_RPC_URL` (opcional)
+- `SEPOLIA_RPC_URL` (opcional, solo server-side)
 
 > Nota: Para este proyecto la ruta de entrada del Worker es `.open-next/worker.js` (configurado en `wrangler.jsonc`).

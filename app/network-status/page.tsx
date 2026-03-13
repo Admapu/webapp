@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { fetchNetworkStatus } from "@/lib/network-status";
+import { fetchNetworkStatus } from "@/lib/server/wallet-status";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 60;
 
 export default async function NetworkStatusPage() {
   try {
