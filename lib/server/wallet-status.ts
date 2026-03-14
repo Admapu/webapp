@@ -57,6 +57,8 @@ type TransferWithBlockNumber = Omit<UserTransfer, "blockNumber"> & {
   blockNumber: bigint;
 };
 
+const MAX_LOG_BLOCK_RANGE = BigInt(10000);
+
 function formatTransfers(transfers: TransferWithBlockNumber[], limit: number): UserTransfer[] {
   transfers.sort((a, b) => {
     if (a.blockNumber > b.blockNumber) return -1;
@@ -70,6 +72,44 @@ function formatTransfers(transfers: TransferWithBlockNumber[], limit: number): U
   }));
 }
 
+async function getLogsChunked({
+  client,
+  address,
+  event,
+  args,
+  fromBlock,
+}: {
+  client: ReturnType<typeof getSepoliaPublicClient>;
+  address: `0x${string}`;
+  event: unknown;
+  args?: Record<string, unknown>;
+  fromBlock: bigint;
+}) {
+  const latestBlock = await client.getBlockNumber();
+  if (fromBlock > latestBlock) {
+    return [];
+  }
+
+  const logs: any[] = [];
+  let start = fromBlock;
+
+  while (start <= latestBlock) {
+    const end = start + MAX_LOG_BLOCK_RANGE - BigInt(1);
+    logs.push(
+      ...(await client.getLogs({
+        address,
+        event: event as never,
+        args: args as never,
+        fromBlock: start,
+        toBlock: end > latestBlock ? latestBlock : end,
+      }))
+    );
+    start = end + BigInt(1);
+  }
+
+  return logs;
+}
+
 export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSnapshot> {
   const verifierAddress = process.env.NEXT_PUBLIC_VERIFIER_ADDRESS;
   if (!verifierAddress) {
@@ -80,6 +120,8 @@ export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSn
   const client = getSepoliaPublicClient();
   const user = getAddress(userAddress);
   const verifier = getAddress(verifierAddress);
+  const token = tokenAddress ? getAddress(tokenAddress) : null;
+  const txHistoryFromBlock = getTxHistoryFromBlock();
 
   const statusContracts = [
     {
@@ -116,13 +158,13 @@ export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSn
       ? client.multicall({
           contracts: [
             {
-              address: getAddress(tokenAddress),
+              address: token!,
               abi: erc20Abi,
               functionName: "balanceOf",
               args: [user] as const,
             },
             {
-              address: getAddress(tokenAddress),
+              address: token!,
               abi: erc20Abi,
               functionName: "decimals",
             },
@@ -130,22 +172,22 @@ export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSn
           allowFailure: false,
         })
       : Promise.resolve(null),
-    tokenAddress
-      ? client.getLogs({
-          address: getAddress(tokenAddress),
+    token
+      ? getLogsChunked({
+          client,
+          address: token,
           event: transferEvent,
           args: { to: user },
-          fromBlock: getTxHistoryFromBlock(),
-          toBlock: "latest",
+          fromBlock: txHistoryFromBlock,
         })
       : Promise.resolve([]),
-    tokenAddress
-      ? client.getLogs({
-          address: getAddress(tokenAddress),
+    token
+      ? getLogsChunked({
+          client,
+          address: token,
           event: transferEvent,
           args: { from: user },
-          fromBlock: getTxHistoryFromBlock(),
-          toBlock: "latest",
+          fromBlock: txHistoryFromBlock,
         })
       : Promise.resolve([]),
   ]);
@@ -222,6 +264,7 @@ export async function fetchNetworkStatus(): Promise<NetworkStatus> {
 
   const client = getSepoliaPublicClient();
   const fromBlock = getNetworkFromBlock();
+  const verifier = getAddress(verifierAddress);
 
   const [chainId, latestBlock, mintingPaused, addedLogs, revokedLogs] = await Promise.all([
     client.getChainId(),
@@ -231,17 +274,19 @@ export async function fetchNetworkStatus(): Promise<NetworkStatus> {
       abi: erc20Abi,
       functionName: "mintingPaused",
     }),
-    client.getLogs({
-      address: getAddress(verifierAddress),
+    getLogsChunked({
+      client,
+      address: verifier,
       event: addressVerifiedEvent,
+      args: {},
       fromBlock,
-      toBlock: "latest",
     }),
-    client.getLogs({
-      address: getAddress(verifierAddress),
+    getLogsChunked({
+      client,
+      address: verifier,
       event: verificationRevokedEvent,
+      args: {},
       fromBlock,
-      toBlock: "latest",
     }),
   ]);
 
