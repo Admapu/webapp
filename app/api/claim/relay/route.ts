@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  createPublicClient,
   createWalletClient,
   encodeFunctionData,
   getAddress,
@@ -10,88 +9,8 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 
-const claimAbi = [
-  {
-    inputs: [],
-    name: "claim",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
-
-const forwarderAbi = [
-  {
-    inputs: [{ name: "owner", type: "address" }],
-    name: "nonces",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        components: [
-          { name: "from", type: "address" },
-          { name: "to", type: "address" },
-          { name: "value", type: "uint256" },
-          { name: "gas", type: "uint256" },
-          { name: "deadline", type: "uint48" },
-          { name: "data", type: "bytes" },
-          { name: "signature", type: "bytes" },
-        ],
-        name: "request",
-        type: "tuple",
-      },
-    ],
-    name: "verify",
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        components: [
-          { name: "from", type: "address" },
-          { name: "to", type: "address" },
-          { name: "value", type: "uint256" },
-          { name: "gas", type: "uint256" },
-          { name: "deadline", type: "uint48" },
-          { name: "data", type: "bytes" },
-          { name: "signature", type: "bytes" },
-        ],
-        name: "request",
-        type: "tuple",
-      },
-    ],
-    name: "execute",
-    outputs: [],
-    stateMutability: "payable",
-    type: "function",
-  },
-  {
-    type: "error",
-    name: "ERC2771ForwarderInvalidSigner",
-    inputs: [
-      { name: "signer", type: "address" },
-      { name: "from", type: "address" },
-    ],
-  },
-  {
-    type: "error",
-    name: "ERC2771ForwarderExpiredRequest",
-    inputs: [{ name: "deadline", type: "uint48" }],
-  },
-  {
-    type: "error",
-    name: "ERC2771UntrustfulTarget",
-    inputs: [
-      { name: "target", type: "address" },
-      { name: "forwarder", type: "address" },
-    ],
-  },
-] as const;
+import { claimAbi, forwarderAbi } from "@/lib/abi";
+import { getSepoliaPublicClient, getSepoliaRpcUrl } from "@/lib/server/sepolia";
 
 type RelayClaimRequest = {
   from?: string;
@@ -116,7 +35,6 @@ export async function POST(req: NextRequest) {
     const forwarderAddress = process.env.NEXT_PUBLIC_FORWARDER_ADDRESS;
     const forwarderName = process.env.NEXT_PUBLIC_FORWARDER_NAME ?? "AdmapuForwarder";
     const claimAddress = process.env.NEXT_PUBLIC_CLPC_CLAIM_ADDRESS;
-    const rpc = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL;
 
     if (!relayPk) {
       return NextResponse.json({ error: "Missing RELAYER_PRIVATE_KEY" }, { status: 500 });
@@ -141,12 +59,9 @@ export async function POST(req: NextRequest) {
     const deadline = BigInt(body.deadline);
 
     const account = privateKeyToAccount(relayPk);
+    const rpc = getSepoliaRpcUrl();
     const transport = rpc ? http(rpc) : http();
-
-    const publicClient = createPublicClient({
-      chain: sepolia,
-      transport,
-    });
+    const publicClient = getSepoliaPublicClient();
     const walletClient = createWalletClient({
       account,
       chain: sepolia,
@@ -247,6 +162,8 @@ export async function POST(req: NextRequest) {
       args: [request],
       value: BigInt(0),
     });
+
+    await publicClient.waitForTransactionReceipt({ hash });
 
     return NextResponse.json({ txHash: hash });
   } catch (error) {
