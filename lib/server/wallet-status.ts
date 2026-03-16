@@ -57,7 +57,14 @@ type TransferWithBlockNumber = Omit<UserTransfer, "blockNumber"> & {
   blockNumber: bigint;
 };
 
-const MAX_LOG_BLOCK_RANGE = BigInt(10000);
+function getMaxLogBlockRange(): bigint {
+  const raw = process.env.SEPOLIA_LOG_BLOCK_RANGE ?? "1000";
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return BigInt(1000);
+  }
+  return BigInt(parsed);
+}
 
 function formatTransfers(transfers: TransferWithBlockNumber[], limit: number): UserTransfer[] {
   transfers.sort((a, b) => {
@@ -91,10 +98,11 @@ async function getLogsChunked({
   }
 
   const logs: any[] = [];
+  const maxLogBlockRange = getMaxLogBlockRange();
   let start = fromBlock;
 
   while (start <= latestBlock) {
-    const end = start + MAX_LOG_BLOCK_RANGE - BigInt(1);
+    const end = start + maxLogBlockRange - BigInt(1);
     logs.push(
       ...(await client.getLogs({
         address,
@@ -110,6 +118,60 @@ async function getLogsChunked({
   return logs;
 }
 
+async function getRecentLogsChunked({
+  client,
+  address,
+  event,
+  args,
+  fromBlock,
+  limit,
+}: {
+  client: ReturnType<typeof getSepoliaPublicClient>;
+  address: `0x${string}`;
+  event: unknown;
+  args?: Record<string, unknown>;
+  fromBlock: bigint;
+  limit: number;
+}) {
+  const latestBlock = await client.getBlockNumber();
+  if (fromBlock > latestBlock || limit <= 0) {
+    return [];
+  }
+
+  const logs: any[] = [];
+  const maxLogBlockRange = getMaxLogBlockRange();
+  let end = latestBlock;
+
+  while (end >= fromBlock && logs.length < limit) {
+    const startCandidate = end - maxLogBlockRange + BigInt(1);
+    const start = startCandidate > fromBlock ? startCandidate : fromBlock;
+
+    const chunk = await client.getLogs({
+      address,
+      event: event as never,
+      args: args as never,
+      fromBlock: start,
+      toBlock: end,
+    });
+
+    logs.push(...chunk);
+
+    if (start === fromBlock) {
+      break;
+    }
+
+    end = start - BigInt(1);
+  }
+
+  logs.sort((a, b) => {
+    if (a.blockNumber > b.blockNumber) return -1;
+    if (a.blockNumber < b.blockNumber) return 1;
+    return 0;
+  });
+
+  return logs.slice(0, limit);
+}
+
 export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSnapshot> {
   const verifierAddress = process.env.NEXT_PUBLIC_VERIFIER_ADDRESS;
   if (!verifierAddress) {
@@ -121,6 +183,7 @@ export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSn
   const user = getAddress(userAddress);
   const verifier = getAddress(verifierAddress);
   const token = tokenAddress ? getAddress(tokenAddress) : null;
+  const txHistoryLimit = getTxHistoryLimit();
   const txHistoryFromBlock = getTxHistoryFromBlock();
 
   const statusContracts = [
@@ -147,8 +210,7 @@ export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSn
   const [
     statusResult,
     tokenResult,
-    incoming,
-    outgoing,
+    transfersResult,
   ] = await Promise.all([
     client.multicall({
       contracts: statusContracts,
@@ -173,23 +235,25 @@ export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSn
         })
       : Promise.resolve(null),
     token
-      ? getLogsChunked({
-          client,
-          address: token,
-          event: transferEvent,
-          args: { to: user },
-          fromBlock: txHistoryFromBlock,
-        })
-      : Promise.resolve([]),
-    token
-      ? getLogsChunked({
-          client,
-          address: token,
-          event: transferEvent,
-          args: { from: user },
-          fromBlock: txHistoryFromBlock,
-        })
-      : Promise.resolve([]),
+      ? Promise.all([
+          getRecentLogsChunked({
+            client,
+            address: token,
+            event: transferEvent,
+            args: { to: user },
+            fromBlock: txHistoryFromBlock,
+            limit: txHistoryLimit,
+          }),
+          getRecentLogsChunked({
+            client,
+            address: token,
+            event: transferEvent,
+            args: { from: user },
+            fromBlock: txHistoryFromBlock,
+            limit: txHistoryLimit,
+          }),
+        ]).catch(() => [[], []] as const)
+      : Promise.resolve([[], []] as const),
   ]);
 
   const [verified, over18, over65] = statusResult;
@@ -203,6 +267,8 @@ export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSn
     decimals = tokenDecimals;
     clpcBalance = formatUnits(rawBalance, tokenDecimals);
   }
+
+  const [incoming, outgoing] = transfersResult;
 
   const transfers = formatTransfers(
     [
@@ -223,7 +289,7 @@ export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSn
         amount: formatUnits(log.args.value ?? BigInt(0), decimals),
       })),
     ],
-    getTxHistoryLimit()
+    txHistoryLimit
   );
 
   return {
