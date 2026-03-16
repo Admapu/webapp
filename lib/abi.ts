@@ -131,10 +131,6 @@ export const forwarderAbi = [
   },
 ] as const;
 
-export const transferEvent = parseAbiItem(
-  "event Transfer(address indexed from, address indexed to, uint256 value)"
-);
-
 export const addressVerifiedEvent = parseAbiItem(
   "event AddressVerified(address indexed user, uint256 at)"
 );
@@ -151,16 +147,6 @@ export type UserStatus = {
   clpcBalance: string;
 };
 
-export type UserTransfer = {
-  txHash: `0x${string}`;
-  blockNumber: string;
-  direction: "in" | "out";
-  from: `0x${string}`;
-  to: `0x${string}`;
-  amount: string;
-};
-
 export type WalletSnapshot = {
   status: UserStatus;
-  transfers: UserTransfer[];
 };

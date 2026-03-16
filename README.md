@@ -35,8 +35,7 @@ Variables:
 - `RELAYER_PRIVATE_KEY` (solo backend)
 - `SEPOLIA_RPC_URL` (opcional, solo server-side)
 - `NEXT_PUBLIC_SEPOLIA_FROM_BLOCK` (opcional, default `9981114`)
-- `NEXT_PUBLIC_TX_HISTORY_FROM_BLOCK` (opcional, default `10320000`)
-- `NEXT_PUBLIC_TX_HISTORY_LIMIT` (opcional, default `10`)
+- `SEPOLIA_LOG_BLOCK_RANGE` (opcional; `10000` funciona bien con Infura, `1000` con thirdweb)
 
 Direcciones Sepolia actuales:
 
