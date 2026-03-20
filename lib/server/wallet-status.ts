@@ -2,23 +2,13 @@ import "server-only";
 
 import { formatUnits, getAddress } from "viem";
 
-import {
-  addressVerifiedEvent,
-  erc20Abi,
-  type WalletSnapshot,
-  verifierAbi,
-  verificationRevokedEvent,
-} from "@/lib/abi";
+import { erc20Abi, type WalletSnapshot, verifierAbi } from "@/lib/abi";
 import { getSepoliaPublicClient } from "@/lib/server/sepolia";
 
 export type NetworkStatus = {
   chainId: number;
   latestBlock: bigint;
   mintingPaused: boolean;
-  verifiedEvents: number;
-  revokedEvents: number;
-  uniqueVerifiedWallets: number;
-  uniqueRevokedWallets: number;
   fromBlock: bigint;
 };
 
@@ -33,54 +23,6 @@ function getNetworkFromBlock(): bigint {
   } catch {
     return BigInt("9981114");
   }
-}
-
-function getMaxLogBlockRange(): bigint {
-  const raw = process.env.SEPOLIA_LOG_BLOCK_RANGE ?? "1000";
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return BigInt(1000);
-  }
-  return BigInt(parsed);
-}
-
-async function getLogsChunked({
-  client,
-  address,
-  event,
-  args,
-  fromBlock,
-}: {
-  client: ReturnType<typeof getSepoliaPublicClient>;
-  address: `0x${string}`;
-  event: unknown;
-  args?: Record<string, unknown>;
-  fromBlock: bigint;
-}) {
-  const latestBlock = await client.getBlockNumber();
-  if (fromBlock > latestBlock) {
-    return [];
-  }
-
-  const logs: any[] = [];
-  const maxLogBlockRange = getMaxLogBlockRange();
-  let start = fromBlock;
-
-  while (start <= latestBlock) {
-    const end = start + maxLogBlockRange - BigInt(1);
-    logs.push(
-      ...(await client.getLogs({
-        address,
-        event: event as never,
-        args: args as never,
-        fromBlock: start,
-        toBlock: end > latestBlock ? latestBlock : end,
-      }))
-    );
-    start = end + BigInt(1);
-  }
-
-  return logs;
 }
 
 export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSnapshot> {
@@ -180,17 +122,14 @@ export async function fetchForwarderNonce(userAddress: string): Promise<bigint> 
 }
 
 export async function fetchNetworkStatus(): Promise<NetworkStatus> {
-  const verifierAddress = process.env.NEXT_PUBLIC_VERIFIER_ADDRESS;
   const tokenAddress = process.env.NEXT_PUBLIC_CLPC_TOKEN_ADDRESS;
 
-  if (!verifierAddress) throw new Error("Falta NEXT_PUBLIC_VERIFIER_ADDRESS");
   if (!tokenAddress) throw new Error("Falta NEXT_PUBLIC_CLPC_TOKEN_ADDRESS");
 
   const client = getSepoliaPublicClient();
   const fromBlock = getNetworkFromBlock();
-  const verifier = getAddress(verifierAddress);
 
-  const [chainId, latestBlock, mintingPaused, addedLogs, revokedLogs] = await Promise.all([
+  const [chainId, latestBlock, mintingPaused] = await Promise.all([
     client.getChainId(),
     client.getBlockNumber(),
     client.readContract({
@@ -198,44 +137,12 @@ export async function fetchNetworkStatus(): Promise<NetworkStatus> {
       abi: erc20Abi,
       functionName: "mintingPaused",
     }),
-    getLogsChunked({
-      client,
-      address: verifier,
-      event: addressVerifiedEvent,
-      args: {},
-      fromBlock,
-    }),
-    getLogsChunked({
-      client,
-      address: verifier,
-      event: verificationRevokedEvent,
-      args: {},
-      fromBlock,
-    }),
   ]);
-
-  const uniqueVerifiedWallets = new Set(
-    addedLogs
-      .map((log) => log.args.user)
-      .filter((value): value is `0x${string}` => Boolean(value))
-      .map((value) => value.toLowerCase())
-  ).size;
-
-  const uniqueRevokedWallets = new Set(
-    revokedLogs
-      .map((log) => log.args.user)
-      .filter((value): value is `0x${string}` => Boolean(value))
-      .map((value) => value.toLowerCase())
-  ).size;
 
   return {
     chainId,
     latestBlock,
     mintingPaused,
-    verifiedEvents: addedLogs.length,
-    revokedEvents: revokedLogs.length,
-    uniqueVerifiedWallets,
-    uniqueRevokedWallets,
     fromBlock,
   };
 }
