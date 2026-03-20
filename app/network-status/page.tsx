@@ -41,16 +41,6 @@ export default async function NetworkStatusPage() {
               <span className="label">Minting Paused</span>
               <strong>{String(status.mintingPaused)}</strong>
             </div>
-
-            <div className="split-row">
-              <span className="label">Usuarios únicos verificados</span>
-              <strong>{status.uniqueVerifiedWallets}</strong>
-            </div>
-
-            <div className="split-row">
-              <span className="label">Usuarios únicos revocados</span>
-              <strong>{status.uniqueRevokedWallets}</strong>
-            </div>
           </div>
 
           <div className="actions-row">

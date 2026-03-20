@@ -141,6 +141,12 @@ export function WalletStatusClient() {
         );
       }
 
+      if (signerAddress !== connectedWalletAddress) {
+        throw new Error(
+          `La firma se intentó con otra cuenta. wallet=${connectedWalletAddress} signer=${signerAddress}`
+        );
+      }
+
       const prepareRes = await fetch(`/api/claim/prepare?address=${signerAddress}`, {
         cache: "no-store",
       });

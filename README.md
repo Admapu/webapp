@@ -35,7 +35,6 @@ Variables:
 - `RELAYER_PRIVATE_KEY` (solo backend)
 - `SEPOLIA_RPC_URL` (opcional, solo server-side)
 - `NEXT_PUBLIC_SEPOLIA_FROM_BLOCK` (opcional, default `9981114`)
-- `SEPOLIA_LOG_BLOCK_RANGE` (opcional; `10000` funciona bien con Infura, `1000` con thirdweb)
 
 Direcciones Sepolia actuales:
 
@@ -62,8 +61,7 @@ Endpoint/página pública nueva (sin login Privy):
 
 - `http://localhost:3000/network-status`
   - estado de red + `mintingPaused` (similar a `make check-status`)
-  - cantidad de eventos `AddressVerified` (similar a `make list-added`)
-  - cantidad de eventos `VerificationRevoked` (similar a `make list-revoked`)
+  - sin escaneo de logs en request-time
 
 ## Build Next.js (local)
 
