@@ -28,9 +28,6 @@ body {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background-image:
-    linear-gradient(rgba(10, 1, 40, 0.38), rgba(10, 1, 40, 0.56)),
-    url('/bg-new.jpg');
   background-size: cover;
   background-position: center;
   filter: saturate(1.02) contrast(1.06);
@@ -193,15 +190,54 @@ button.secondary {
   color: #b4ffd5;
 }
 
-.tx-history {
+.panel {
   margin-top: 1rem;
   border-top: 1px solid rgba(122, 170, 255, 0.25);
   padding-top: 0.8rem;
 }
 
-.tx-history h3 {
+.panel h3 {
   margin: 0 0 0.5rem;
   font-size: 1rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 0.9rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field span {
+  color: #c5d3f1;
+  font-size: 0.92rem;
+}
+
+input {
+  width: 100%;
+  border: 1px solid rgba(112, 172, 255, 0.35);
+  border-radius: 10px;
+  background: rgba(15, 21, 48, 0.72);
+  color: #f2f6ff;
+  padding: 0.75rem 0.8rem;
+  outline: none;
+}
+
+input::placeholder {
+  color: rgba(192, 206, 239, 0.58);
+}
+
+input:focus {
+  border-color: rgba(116, 223, 255, 0.8);
+  box-shadow: 0 0 0 3px rgba(82, 182, 255, 0.16);
+}
+
+.actions-row.compact {
+  margin-top: 0.4rem;
 }
 
 @media (max-width: 640px) {
