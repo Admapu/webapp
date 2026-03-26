@@ -13,7 +13,7 @@ import {
 } from "viem";
 import { sepolia } from "viem/chains";
 
-import { claimAbi, erc20Abi, type UserStatus, type WalletSnapshot } from "@/lib/abi";
+import { claimAbi, erc20Abi, transportAbi, type UserStatus, type WalletSnapshot } from "@/lib/abi";
 
 const CLPC_DECIMALS = 8;
 
@@ -66,9 +66,11 @@ export function WalletStatusClient() {
   const [status, setStatus] = useState<UserStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [claimingTransport, setClaimingTransport] = useState(false);
   const [transferring, setTransferring] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [claimMessage, setClaimMessage] = useState<string | null>(null);
+  const [transportClaimMessage, setTransportClaimMessage] = useState<string | null>(null);
   const [transferMessage, setTransferMessage] = useState<string | null>(null);
   const [transferTo, setTransferTo] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
@@ -76,6 +78,7 @@ export function WalletStatusClient() {
   const wallet = useMemo(() => wallets[0], [wallets]);
   const walletAddress = useMemo(() => wallet?.address, [wallet]);
   const claimAddress = process.env.NEXT_PUBLIC_CLPC_CLAIM_ADDRESS;
+  const transportAddress = process.env.NEXT_PUBLIC_TRANSPORT_ADDRESS;
   const tokenAddress = process.env.NEXT_PUBLIC_CLPC_TOKEN_ADDRESS;
   const forwarderAddress = process.env.NEXT_PUBLIC_FORWARDER_ADDRESS;
   const forwarderName = process.env.NEXT_PUBLIC_FORWARDER_NAME ?? "AdmapuForwarder";
@@ -218,6 +221,7 @@ export function WalletStatusClient() {
     try {
       setClaiming(true);
       setClaimMessage(null);
+      setTransportClaimMessage(null);
       setTransferMessage(null);
       setError(null);
 
@@ -279,6 +283,87 @@ export function WalletStatusClient() {
       setClaimMessage(`❌ ${message}`);
     } finally {
       setClaiming(false);
+    }
+  }
+
+  async function handleTransportClaim() {
+    if (!transportAddress) {
+      setTransportClaimMessage("Falta NEXT_PUBLIC_TRANSPORT_ADDRESS.");
+      return;
+    }
+
+    try {
+      setClaimingTransport(true);
+      setTransportClaimMessage(null);
+      setClaimMessage(null);
+      setTransferMessage(null);
+      setError(null);
+
+      if (!status?.schoolTransport) {
+        throw new Error("Solo usuarios habilitados en transporte escolar pueden reclamar este beneficio.");
+      }
+      if (status.transportClaimedCurrentPeriod) {
+        throw new Error("El beneficio de transporte ya fue reclamado en el periodo actual.");
+      }
+
+      const { provider, signerAddress } = await getSigningContext();
+      const claimData = encodeFunctionData({
+        abi: transportAbi,
+        functionName: "claim",
+      });
+      const nonce = await fetchForwarderNonce(signerAddress);
+      const gas = BigInt(300_000);
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
+
+      const signatureHex = await signForwardRequest({
+        provider,
+        signerAddress,
+        targetAddress: transportAddress,
+        data: claimData,
+        nonce,
+        gas,
+        deadline,
+      });
+
+      const relayRes = await fetch("/api/transport/relay", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          from: signerAddress,
+          nonce: nonce.toString(),
+          gas: gas.toString(),
+          deadline: deadline.toString(),
+          signature: signatureHex,
+        }),
+      });
+
+      const relayBody = (await relayRes.json()) as {
+        txHash?: string;
+        error?: string;
+        debug?: {
+          expectedFrom?: string;
+          recoveredSigner?: string;
+          nonce?: string;
+          currentNonce?: string;
+          deadline?: string;
+          now?: string;
+        };
+      };
+
+      if (!relayRes.ok || !relayBody.txHash) {
+        const debug = relayBody.debug
+          ? ` expectedFrom=${relayBody.debug.expectedFrom} recoveredSigner=${relayBody.debug.recoveredSigner} nonce=${relayBody.debug.nonce}/${relayBody.debug.currentNonce} deadline=${relayBody.debug.deadline} now=${relayBody.debug.now}`
+          : "";
+        throw new Error(`${relayBody.error ?? "No se pudo relayer el beneficio de transporte"}${debug}`);
+      }
+
+      setTransportClaimMessage("✅ Beneficio de transporte ejecutado por relayer (usuario sin gas).");
+      await refreshStatus(signerAddress);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "No se pudo ejecutar el beneficio de transporte";
+      setTransportClaimMessage(`❌ ${message}`);
+    } finally {
+      setClaimingTransport(false);
     }
   }
 
@@ -408,6 +493,10 @@ export function WalletStatusClient() {
             <span className="label">Edad</span>
             <strong>{status.ageLabel}</strong>
           </div>
+          <div className="split-row">
+            <span className="label">Transporte Escolar</span>
+            <strong>{status.schoolTransport ? "true" : "false"}</strong>
+          </div>
           <div className="split-row balance-row">
             <span className="label">Saldo CLPc</span>
             <strong className="balance-value">{status.clpcBalance} CLP</strong>
@@ -419,6 +508,9 @@ export function WalletStatusClient() {
       )}
 
       {claimMessage && <p className={claimMessage.startsWith("✅") ? "success" : "error"}>{claimMessage}</p>}
+      {transportClaimMessage && (
+        <p className={transportClaimMessage.startsWith("✅") ? "success" : "error"}>{transportClaimMessage}</p>
+      )}
 
       <div className="panel">
         <h3>Transferencias</h3>
@@ -466,6 +558,20 @@ export function WalletStatusClient() {
       </div>
 
       <div className="actions-row">
+        <button
+          onClick={handleTransportClaim}
+          disabled={claimingTransport || !status?.schoolTransport || !!status?.transportClaimedCurrentPeriod}
+          title={
+            !status?.schoolTransport
+              ? "Solo usuarios habilitados en transporte escolar pueden reclamar este beneficio"
+              : status?.transportClaimedCurrentPeriod
+                ? "Beneficio ya reclamado en el periodo actual"
+                : undefined
+          }
+        >
+          {claimingTransport ? "Procesando transporte..." : "Claim Transporte Escolar"}
+        </button>
+
         <button
           onClick={handleClaim}
           disabled={claiming || !status?.verified}
