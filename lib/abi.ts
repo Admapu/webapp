@@ -68,6 +68,40 @@ export const claimAbi = [
   },
 ] as const;
 
+export const transportAbi = [
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "eligibleSchoolTransport",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "currentPeriod",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "account", type: "address" },
+      { name: "period", type: "uint256" },
+    ],
+    name: "claimedByPeriod",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "claim",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
+
 export const forwarderAbi = [
   {
     inputs: [{ name: "owner", type: "address" }],
@@ -154,6 +188,8 @@ export type UserStatus = {
   over18: boolean;
   over65: boolean;
   ageLabel: string;
+  schoolTransport: boolean;
+  transportClaimedCurrentPeriod: boolean;
   clpcBalance: string;
 };
 

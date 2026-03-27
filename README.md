@@ -4,8 +4,9 @@ Webapp mínima para conectar wallet y mostrar:
 
 1. Si el usuario está verificado como chileno
 2. El rango de edad del usuario
-3. El balance de CLPc de la wallet
-4. Botón de claim único (meta-tx ERC-2771) para CLPc
+3. Si el usuario está habilitado para el beneficio de transporte escolar
+4. El balance total de CLPc de la wallet
+5. Botones de claim gasless para CLPc y transporte escolar
 
 Stack: **Next.js + Privy + viem**, preparado para deploy en **Cloudflare Workers** con **OpenNext**.
 
@@ -30,6 +31,7 @@ Variables:
 - `NEXT_PUBLIC_VERIFIER_ADDRESS`
 - `NEXT_PUBLIC_CLPC_TOKEN_ADDRESS`
 - `NEXT_PUBLIC_CLPC_CLAIM_ADDRESS`
+- `NEXT_PUBLIC_TRANSPORT_ADDRESS`
 - `NEXT_PUBLIC_FORWARDER_ADDRESS`
 - `NEXT_PUBLIC_FORWARDER_NAME` (default `AdmapuForwarder`)
 - `RELAYER_PRIVATE_KEY` (solo backend)
@@ -41,11 +43,19 @@ Direcciones Sepolia actuales:
 - Verifier: `0xD51F4F3D2c35E51FD4Fda03D4Ae8A251801C9c94`
 - Token: `0xfb43d4e4dBB4c444e7Dcd73A86e836EC7607f553`
 - Claim: `0xe1c2dB0ea79f8b91991aC789E32A35E39D7d1fF7`
+- TransportBenefit: `0xD16B1A6c4b9243473b5e43b16a6A26AD8B71e102`
 
 Claim en UI:
 - El botón **Claim CLPc** aparece al iniciar sesión.
 - Está habilitado solo para usuarios verificados.
 - Requiere `NEXT_PUBLIC_CLPC_CLAIM_ADDRESS`, `NEXT_PUBLIC_FORWARDER_ADDRESS` y `RELAYER_PRIVATE_KEY`.
+- El usuario firma typed data y el backend relayer paga gas vía `ERC2771Forwarder`.
+
+Transporte escolar en UI:
+- La fila **Transporte Escolar** muestra `true/false` según `eligibleSchoolTransport(address)`.
+- El botón **Claim Transporte Escolar** aparece al iniciar sesión.
+- Está habilitado solo para usuarios con `Transporte Escolar = true` y que no hayan reclamado en el período actual.
+- Requiere `NEXT_PUBLIC_TRANSPORT_ADDRESS`, `NEXT_PUBLIC_FORWARDER_ADDRESS` y `RELAYER_PRIVATE_KEY`.
 - El usuario firma typed data y el backend relayer paga gas vía `ERC2771Forwarder`.
 
 ## Desarrollo local

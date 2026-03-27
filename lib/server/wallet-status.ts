@@ -2,7 +2,7 @@ import "server-only";
 
 import { formatUnits, getAddress } from "viem";
 
-import { erc20Abi, type WalletSnapshot, verifierAbi } from "@/lib/abi";
+import { erc20Abi, transportAbi, type WalletSnapshot, verifierAbi } from "@/lib/abi";
 import { getSepoliaPublicClient } from "@/lib/server/sepolia";
 
 export type NetworkStatus = {
@@ -32,10 +32,12 @@ export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSn
   }
 
   const tokenAddress = process.env.NEXT_PUBLIC_CLPC_TOKEN_ADDRESS;
+  const transportAddress = process.env.NEXT_PUBLIC_TRANSPORT_ADDRESS;
   const client = getSepoliaPublicClient();
   const user = getAddress(userAddress);
   const verifier = getAddress(verifierAddress);
   const token = tokenAddress ? getAddress(tokenAddress) : null;
+  const transport = transportAddress ? getAddress(transportAddress) : null;
 
   const statusContracts = [
     {
@@ -58,11 +60,29 @@ export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSn
     },
   ];
 
-  const [statusResult, tokenResult] = await Promise.all([
+  const [statusResult, transportResult, tokenResult] = await Promise.all([
     client.multicall({
       contracts: statusContracts,
       allowFailure: false,
     }),
+    transportAddress
+      ? client.multicall({
+          contracts: [
+            {
+              address: transport!,
+              abi: transportAbi,
+              functionName: "eligibleSchoolTransport",
+              args: [user] as const,
+            },
+            {
+              address: transport!,
+              abi: transportAbi,
+              functionName: "currentPeriod",
+            },
+          ],
+          allowFailure: false,
+        })
+      : Promise.resolve(null),
     tokenAddress
       ? client.multicall({
           contracts: [
@@ -85,8 +105,22 @@ export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSn
 
   const [verified, over18, over65] = statusResult;
   const ageLabel = over65 ? "65+" : over18 ? "18-64" : "<18";
+  let schoolTransport = false;
+  let transportClaimedCurrentPeriod = false;
 
   let clpcBalance = "No configurado";
+
+  if (transportResult) {
+    const [transportEligible, currentPeriod] = transportResult;
+    schoolTransport = transportEligible;
+
+    transportClaimedCurrentPeriod = await client.readContract({
+      address: transport!,
+      abi: transportAbi,
+      functionName: "claimedByPeriod",
+      args: [user, currentPeriod],
+    });
+  }
 
   if (tokenResult) {
     const [rawBalance, tokenDecimals] = tokenResult;
@@ -94,7 +128,7 @@ export async function fetchWalletSnapshot(userAddress: string): Promise<WalletSn
   }
 
   return {
-    status: { verified, over18, over65, ageLabel, clpcBalance },
+    status: { verified, over18, over65, ageLabel, schoolTransport, transportClaimedCurrentPeriod, clpcBalance },
   };
 }
 
