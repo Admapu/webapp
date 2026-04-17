@@ -170,6 +170,22 @@ button.secondary {
   margin-top: 1rem;
 }
 
+.contract-link {
+  color: #a9c6ff;
+  text-decoration: none;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contract-link:hover {
+  color: #eaf2ff;
+}
+
+.contract-link code {
+  word-break: break-all;
+}
+
 .link-button {
   display: inline-flex;
   align-items: center;
