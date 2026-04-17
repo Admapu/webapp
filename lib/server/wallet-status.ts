@@ -10,6 +10,13 @@ export type NetworkStatus = {
   latestBlock: bigint;
   mintingPaused: boolean;
   fromBlock: bigint;
+  contracts: {
+    token: string | null;
+    claim: string | null;
+    verifier: string | null;
+    transport: string | null;
+    forwarder: string | null;
+  };
 };
 
 function getNetworkFromBlock(): bigint {
@@ -178,5 +185,20 @@ export async function fetchNetworkStatus(): Promise<NetworkStatus> {
     latestBlock,
     mintingPaused,
     fromBlock,
+    contracts: {
+      token: tokenAddress ? getAddress(tokenAddress) : null,
+      claim: process.env.NEXT_PUBLIC_CLPC_CLAIM_ADDRESS
+        ? getAddress(process.env.NEXT_PUBLIC_CLPC_CLAIM_ADDRESS)
+        : null,
+      verifier: process.env.NEXT_PUBLIC_VERIFIER_ADDRESS
+        ? getAddress(process.env.NEXT_PUBLIC_VERIFIER_ADDRESS)
+        : null,
+      transport: process.env.NEXT_PUBLIC_TRANSPORT_ADDRESS
+        ? getAddress(process.env.NEXT_PUBLIC_TRANSPORT_ADDRESS)
+        : null,
+      forwarder: process.env.NEXT_PUBLIC_FORWARDER_ADDRESS
+        ? getAddress(process.env.NEXT_PUBLIC_FORWARDER_ADDRESS)
+        : null,
+    },
   };
 }
