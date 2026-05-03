@@ -6,6 +6,7 @@ import {
   createWalletClient,
   custom,
   encodeFunctionData,
+  formatEther,
   getAddress,
   isAddress,
   parseUnits,
@@ -20,6 +21,25 @@ const CLPC_DECIMALS = 8;
 type EthereumProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
 };
+
+type PaymentVerificationResponse =
+  | {
+      ok: true;
+      txHash: string;
+      payer: string;
+      recipient: string;
+      blockNumber: string | number | bigint;
+      value: string;
+    }
+  | {
+      ok?: false;
+      error: string;
+      txHash?: string;
+      payer?: string;
+      recipient?: string | null;
+      blockNumber?: string | number | bigint | null;
+      value?: string;
+    };
 
 const walletSnapshotRequests = new Map<string, Promise<WalletSnapshot>>();
 
@@ -72,6 +92,9 @@ export function WalletStatusClient() {
   const [claimMessage, setClaimMessage] = useState<string | null>(null);
   const [transportClaimMessage, setTransportClaimMessage] = useState<string | null>(null);
   const [transferMessage, setTransferMessage] = useState<string | null>(null);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [paymentTxHash, setPaymentTxHash] = useState("");
+  const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
   const [transferTo, setTransferTo] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
 
@@ -82,6 +105,14 @@ export function WalletStatusClient() {
   const tokenAddress = process.env.NEXT_PUBLIC_CLPC_TOKEN_ADDRESS;
   const forwarderAddress = process.env.NEXT_PUBLIC_FORWARDER_ADDRESS;
   const forwarderName = process.env.NEXT_PUBLIC_FORWARDER_NAME ?? "AdmapuForwarder";
+  const ownerPaymentAddresses = useMemo(
+    () =>
+      (process.env.NEXT_PUBLIC_OWNER_PAYMENT_ADDRESSES ?? "")
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    []
+  );
 
   async function refreshStatus(address: string) {
     setLoading(true);
@@ -211,6 +242,53 @@ export function WalletStatusClient() {
 
     refreshStatus(walletAddress);
   }, [authenticated, walletAddress]);
+
+  async function handleVerifyPayment() {
+    if (!walletAddress) {
+      setPaymentMessage("No hay wallet conectada.");
+      return;
+    }
+
+    try {
+      setVerifyingPayment(true);
+      setPaymentMessage(null);
+      setClaimMessage(null);
+      setTransportClaimMessage(null);
+      setTransferMessage(null);
+      setError(null);
+
+      const txHash = paymentTxHash.trim();
+      if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
+        throw new Error("Ingresa un transaction hash valido.");
+      }
+
+      const response = await fetch("/api/payment/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          loginAddress: walletAddress,
+          txHash,
+        }),
+      });
+
+      const body = (await response.json()) as PaymentVerificationResponse;
+      if (!response.ok || !body.ok) {
+        const errorMessage = "error" in body ? body.error : undefined;
+        throw new Error(errorMessage ?? "No se pudo verificar el pago on-chain.");
+      }
+
+      const amountLabel = formatEther(BigInt(body.value));
+      const blockLabel = body.blockNumber.toString();
+      setPaymentMessage(
+        `✅ Pago verificado. tx=${body.txHash} from=${body.payer} to=${body.recipient} value=${amountLabel} ETH block=${blockLabel}`
+      );
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "No se pudo verificar el pago";
+      setPaymentMessage(`❌ ${message}`);
+    } finally {
+      setVerifyingPayment(false);
+    }
+  }
 
   async function handleClaim() {
     if (!claimAddress) {
@@ -511,6 +589,48 @@ export function WalletStatusClient() {
       {transportClaimMessage && (
         <p className={transportClaimMessage.startsWith("✅") ? "success" : "error"}>{transportClaimMessage}</p>
       )}
+
+      <div className="panel">
+        <h3>Confirmar pago</h3>
+        <p className="muted small">
+          El pago debe salir desde la misma wallet usada para iniciar sesion y llegar a una address del owner.
+        </p>
+        {ownerPaymentAddresses.length > 0 ? (
+          <div className="payment-address-list">
+            {ownerPaymentAddresses.map((address) => (
+              <code key={address}>{address}</code>
+            ))}
+          </div>
+        ) : (
+          <p className="muted small">Falta configurar NEXT_PUBLIC_OWNER_PAYMENT_ADDRESSES.</p>
+        )}
+
+        <div className="form-grid">
+          <label className="field">
+            <span>Transaction hash</span>
+            <input
+              type="text"
+              inputMode="text"
+              placeholder="0x..."
+              value={paymentTxHash}
+              onChange={(event) => setPaymentTxHash(event.target.value)}
+            />
+          </label>
+        </div>
+
+        {paymentMessage && (
+          <p className={paymentMessage.startsWith("✅") ? "success break-anywhere" : "error break-anywhere"}>{paymentMessage}</p>
+        )}
+
+        <div className="actions-row compact">
+          <button
+            onClick={handleVerifyPayment}
+            disabled={verifyingPayment || !paymentTxHash.trim()}
+          >
+            {verifyingPayment ? "Verificando pago..." : "Confirmar pago on-chain"}
+          </button>
+        </div>
+      </div>
 
       <div className="panel">
         <h3>Transferencias</h3>

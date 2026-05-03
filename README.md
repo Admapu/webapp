@@ -34,6 +34,8 @@ Variables:
 - `NEXT_PUBLIC_TRANSPORT_ADDRESS`
 - `NEXT_PUBLIC_FORWARDER_ADDRESS`
 - `NEXT_PUBLIC_FORWARDER_NAME` (default `AdmapuForwarder`)
+- `OWNER_PAYMENT_ADDRESSES` (lista separada por comas para validar pagos on-chain)
+- `NEXT_PUBLIC_OWNER_PAYMENT_ADDRESSES` (opcional, misma lista para mostrar en la UI)
 - `RELAYER_PRIVATE_KEY` (solo backend)
 - `SEPOLIA_RPC_URL` (opcional, solo server-side)
 - `NEXT_PUBLIC_SEPOLIA_FROM_BLOCK` (opcional, default `9981114`)
@@ -57,6 +59,12 @@ Transporte escolar en UI:
 - Está habilitado solo para usuarios con `Transporte Escolar = true` y que no hayan reclamado en el período actual.
 - Requiere `NEXT_PUBLIC_TRANSPORT_ADDRESS`, `NEXT_PUBLIC_FORWARDER_ADDRESS` y `RELAYER_PRIVATE_KEY`.
 - El usuario firma typed data y el backend relayer paga gas vía `ERC2771Forwarder`.
+
+Confirmación de pagos en UI:
+- El owner define una o más direcciones receptoras en `OWNER_PAYMENT_ADDRESSES`.
+- Puedes exponer esa misma lista en la interfaz con `NEXT_PUBLIC_OWNER_PAYMENT_ADDRESSES`.
+- El usuario pega un `tx hash` y el backend confirma on-chain que la tx salió desde la wallet con la que inició sesión y llegó a una dirección permitida del owner.
+- La validación exige receipt exitoso, bloque confirmado y monto nativo mayor a cero.
 
 ## Desarrollo local
 
