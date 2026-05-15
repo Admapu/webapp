@@ -9,21 +9,30 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 
-import { claimAbi, forwarderAbi } from "@/lib/abi";
+import { erc20Abi, forwarderAbi } from "@/lib/abi";
 import { getSepoliaPublicClient, getSepoliaRpcUrl } from "@/lib/server/sepolia";
 
-type RelayClaimRequest = {
+type RelayTransferRequest = {
   from?: string;
+  to?: string;
+  amount?: string;
   nonce?: string;
   gas?: string;
   deadline?: string;
   signature?: string;
 };
 
-function friendlyRelayError(message: string): { status: number; error: string } {
-  // ClaimCLPc.AlreadyClaimed(address) bubbling through ERC2771Forwarder.execute
-  if (message.includes("0x1425ea42")) {
-    return { status: 409, error: "One-time claim already executed for this wallet." };
+function friendlyTransferError(message: string): { status: number; error: string } {
+  if (message.includes("0x3c7f73d1")) {
+    return { status: 409, error: "Recipient wallet is not verified to receive CLPc." };
+  }
+
+  if (message.includes("0x63d9b285")) {
+    return { status: 409, error: "Sender wallet is not verified to transfer CLPc." };
+  }
+
+  if (message.includes("0xe450d38c")) {
+    return { status: 409, error: "Insufficient CLPc balance for this transfer." };
   }
 
   return { status: 500, error: message };
@@ -34,29 +43,43 @@ export async function POST(req: NextRequest) {
     const relayPk = process.env.RELAYER_PRIVATE_KEY as `0x${string}` | undefined;
     const forwarderAddress = process.env.NEXT_PUBLIC_FORWARDER_ADDRESS;
     const forwarderName = process.env.NEXT_PUBLIC_FORWARDER_NAME ?? "AdmapuForwarder";
-    const claimAddress = process.env.NEXT_PUBLIC_CLPC_CLAIM_ADDRESS;
+    const tokenAddress = process.env.NEXT_PUBLIC_CLPC_TOKEN_ADDRESS;
 
     if (!relayPk) {
       return NextResponse.json({ error: "Missing RELAYER_PRIVATE_KEY" }, { status: 500 });
     }
-    if (!forwarderAddress || !claimAddress) {
+    if (!forwarderAddress || !tokenAddress) {
       return NextResponse.json(
-        { error: "Missing NEXT_PUBLIC_FORWARDER_ADDRESS or NEXT_PUBLIC_CLPC_CLAIM_ADDRESS" },
+        { error: "Missing NEXT_PUBLIC_FORWARDER_ADDRESS or NEXT_PUBLIC_CLPC_TOKEN_ADDRESS" },
         { status: 500 }
       );
     }
 
-    const body = (await req.json()) as RelayClaimRequest;
-    if (!body.from || !body.nonce || !body.gas || !body.deadline || !body.signature) {
+    const body = (await req.json()) as RelayTransferRequest;
+    if (
+      !body.from ||
+      !body.to ||
+      !body.amount ||
+      !body.nonce ||
+      !body.gas ||
+      !body.deadline ||
+      !body.signature
+    ) {
       return NextResponse.json({ error: "Invalid relay payload" }, { status: 400 });
     }
 
     const from = getAddress(body.from);
+    const to = getAddress(body.to);
     const forwarder = getAddress(forwarderAddress);
-    const claim = getAddress(claimAddress);
+    const token = getAddress(tokenAddress);
+    const amount = BigInt(body.amount);
     const nonce = BigInt(body.nonce);
     const gas = BigInt(body.gas);
     const deadline = BigInt(body.deadline);
+
+    if (amount <= BigInt(0)) {
+      return NextResponse.json({ error: "Transfer amount must be greater than zero." }, { status: 400 });
+    }
 
     const account = privateKeyToAccount(relayPk);
     const rpc = getSepoliaRpcUrl();
@@ -82,18 +105,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const claimData = encodeFunctionData({
-      abi: claimAbi,
-      functionName: "claim",
+    const transferData = encodeFunctionData({
+      abi: erc20Abi,
+      functionName: "transfer",
+      args: [to, amount],
     });
 
     const request = {
       from,
-      to: claim,
+      to: token,
       value: BigInt(0),
       gas,
       deadline: Number(deadline),
-      data: claimData,
+      data: transferData,
       signature: body.signature as `0x${string}`,
     } as const;
 
@@ -126,12 +150,12 @@ export async function POST(req: NextRequest) {
         primaryType: "ForwardRequest",
         message: {
           from,
-          to: claim,
+          to: token,
           value: BigInt(0),
           gas,
           nonce,
           deadline: Number(deadline),
-          data: claimData,
+          data: transferData,
         },
         signature: body.signature as `0x${string}`,
       });
@@ -147,7 +171,9 @@ export async function POST(req: NextRequest) {
             deadline: deadline.toString(),
             now: Math.floor(Date.now() / 1000).toString(),
             forwarder,
-            claim,
+            token,
+            transferTo: to,
+            transferAmount: amount.toString(),
             forwarderName,
           },
         },
@@ -168,7 +194,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ txHash: hash });
   } catch (error) {
     const message = error instanceof Error ? error.message : "relay failed";
-    const friendly = friendlyRelayError(message);
+    const friendly = friendlyTransferError(message);
     return NextResponse.json({ error: friendly.error }, { status: friendly.status });
   }
 }

@@ -1,3 +1,4 @@
+import { SessionBackground } from "@/components/session-background";
 import { WalletStatusClient } from "@/components/wallet-status-client";
 
 export default function HomePage() {
@@ -5,7 +6,7 @@ export default function HomePage() {
 
   return (
     <main className="landing">
-      <div className="scene" aria-hidden="true" />
+      <SessionBackground />
       <div className="network-overlay" aria-hidden="true" />
       <div className="vignette" aria-hidden="true" />
 

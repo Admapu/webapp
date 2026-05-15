@@ -9,10 +9,10 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 
-import { claimAbi, forwarderAbi } from "@/lib/abi";
+import { forwarderAbi, transportAbi } from "@/lib/abi";
 import { getSepoliaPublicClient, getSepoliaRpcUrl } from "@/lib/server/sepolia";
 
-type RelayClaimRequest = {
+type RelayTransportClaimRequest = {
   from?: string;
   nonce?: string;
   gas?: string;
@@ -21,9 +21,16 @@ type RelayClaimRequest = {
 };
 
 function friendlyRelayError(message: string): { status: number; error: string } {
-  // ClaimCLPc.AlreadyClaimed(address) bubbling through ERC2771Forwarder.execute
-  if (message.includes("0x1425ea42")) {
-    return { status: 409, error: "One-time claim already executed for this wallet." };
+  if (message.includes("0xe64ea1da")) {
+    return { status: 409, error: "Transport benefit already claimed for the current period." };
+  }
+
+  if (message.includes("0x3a1c1545")) {
+    return { status: 409, error: "Wallet is not eligible for school transport." };
+  }
+
+  if (message.includes("0xb12c8f91")) {
+    return { status: 409, error: "Wallet is not verified as Chilean." };
   }
 
   return { status: 500, error: message };
@@ -34,26 +41,26 @@ export async function POST(req: NextRequest) {
     const relayPk = process.env.RELAYER_PRIVATE_KEY as `0x${string}` | undefined;
     const forwarderAddress = process.env.NEXT_PUBLIC_FORWARDER_ADDRESS;
     const forwarderName = process.env.NEXT_PUBLIC_FORWARDER_NAME ?? "AdmapuForwarder";
-    const claimAddress = process.env.NEXT_PUBLIC_CLPC_CLAIM_ADDRESS;
+    const transportAddress = process.env.NEXT_PUBLIC_TRANSPORT_ADDRESS;
 
     if (!relayPk) {
       return NextResponse.json({ error: "Missing RELAYER_PRIVATE_KEY" }, { status: 500 });
     }
-    if (!forwarderAddress || !claimAddress) {
+    if (!forwarderAddress || !transportAddress) {
       return NextResponse.json(
-        { error: "Missing NEXT_PUBLIC_FORWARDER_ADDRESS or NEXT_PUBLIC_CLPC_CLAIM_ADDRESS" },
+        { error: "Missing NEXT_PUBLIC_FORWARDER_ADDRESS or NEXT_PUBLIC_TRANSPORT_ADDRESS" },
         { status: 500 }
       );
     }
 
-    const body = (await req.json()) as RelayClaimRequest;
+    const body = (await req.json()) as RelayTransportClaimRequest;
     if (!body.from || !body.nonce || !body.gas || !body.deadline || !body.signature) {
       return NextResponse.json({ error: "Invalid relay payload" }, { status: 400 });
     }
 
     const from = getAddress(body.from);
     const forwarder = getAddress(forwarderAddress);
-    const claim = getAddress(claimAddress);
+    const transportBenefit = getAddress(transportAddress);
     const nonce = BigInt(body.nonce);
     const gas = BigInt(body.gas);
     const deadline = BigInt(body.deadline);
@@ -83,13 +90,13 @@ export async function POST(req: NextRequest) {
     }
 
     const claimData = encodeFunctionData({
-      abi: claimAbi,
+      abi: transportAbi,
       functionName: "claim",
     });
 
     const request = {
       from,
-      to: claim,
+      to: transportBenefit,
       value: BigInt(0),
       gas,
       deadline: Number(deadline),
@@ -126,7 +133,7 @@ export async function POST(req: NextRequest) {
         primaryType: "ForwardRequest",
         message: {
           from,
-          to: claim,
+          to: transportBenefit,
           value: BigInt(0),
           gas,
           nonce,
@@ -147,7 +154,7 @@ export async function POST(req: NextRequest) {
             deadline: deadline.toString(),
             now: Math.floor(Date.now() / 1000).toString(),
             forwarder,
-            claim,
+            transportBenefit,
             forwarderName,
           },
         },

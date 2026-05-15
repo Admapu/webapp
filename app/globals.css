@@ -28,9 +28,6 @@ body {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background-image:
-    linear-gradient(rgba(10, 1, 40, 0.38), rgba(10, 1, 40, 0.56)),
-    url('/bg-new.jpg');
   background-size: cover;
   background-position: center;
   filter: saturate(1.02) contrast(1.06);
@@ -173,6 +170,22 @@ button.secondary {
   margin-top: 1rem;
 }
 
+.contract-link {
+  color: #a9c6ff;
+  text-decoration: none;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contract-link:hover {
+  color: #eaf2ff;
+}
+
+.contract-link code {
+  word-break: break-all;
+}
+
 .link-button {
   display: inline-flex;
   align-items: center;
@@ -193,62 +206,54 @@ button.secondary {
   color: #b4ffd5;
 }
 
-.tx-history {
+.panel {
   margin-top: 1rem;
   border-top: 1px solid rgba(122, 170, 255, 0.25);
   padding-top: 0.8rem;
 }
 
-.tx-history h3 {
+.panel h3 {
   margin: 0 0 0.5rem;
   font-size: 1rem;
 }
 
-.tx-list {
+.form-grid {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.8rem;
+  margin-top: 0.9rem;
 }
 
-.tx-row {
+.field {
   display: grid;
-  grid-template-columns: auto auto 1fr auto;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.5rem 0.55rem;
-  border: 1px solid rgba(122, 170, 255, 0.2);
+  gap: 0.35rem;
+}
+
+.field span {
+  color: #c5d3f1;
+  font-size: 0.92rem;
+}
+
+input {
+  width: 100%;
+  border: 1px solid rgba(112, 172, 255, 0.35);
   border-radius: 10px;
-  background: rgba(15, 21, 48, 0.35);
+  background: rgba(15, 21, 48, 0.72);
+  color: #f2f6ff;
+  padding: 0.75rem 0.8rem;
+  outline: none;
 }
 
-.tx-badge {
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.15rem 0.45rem;
+input::placeholder {
+  color: rgba(192, 206, 239, 0.58);
 }
 
-.tx-badge.in {
-  color: #b4ffd5;
-  background: rgba(64, 178, 118, 0.2);
+input:focus {
+  border-color: rgba(116, 223, 255, 0.8);
+  box-shadow: 0 0 0 3px rgba(82, 182, 255, 0.16);
 }
 
-.tx-badge.out {
-  color: #ffd2b0;
-  background: rgba(191, 106, 64, 0.2);
-}
-
-.tx-amount {
-  font-weight: 600;
-}
-
-.tx-counterparty {
-  min-width: 0;
-}
-
-.tx-link {
-  color: #9cc2ff;
-  text-decoration: none;
-  font-weight: 600;
+.actions-row.compact {
+  margin-top: 0.4rem;
 }
 
 @media (max-width: 640px) {
@@ -263,10 +268,5 @@ button.secondary {
 
   .balance-value {
     font-size: 1.4rem;
-  }
-
-  .tx-row {
-    grid-template-columns: 1fr;
-    align-items: flex-start;
   }
 }
