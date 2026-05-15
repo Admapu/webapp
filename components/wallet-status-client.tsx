@@ -477,7 +477,9 @@ export function WalletStatusClient() {
     <>
       <div className="split-row wallet-row">
         <span className="label">Wallet</span>
-        <code>{walletAddress}</code>
+        <a href={`https://sepolia.etherscan.io/address/${walletAddress}`} target="_blank" rel="noreferrer">
+          <code>{walletAddress}</code>
+        </a>
       </div>
 
       {loading && <p>Consultando estado on-chain...</p>}
