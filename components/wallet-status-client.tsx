@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import {
+  createPublicClient,
   createWalletClient,
   custom,
   encodeFunctionData,
@@ -90,9 +91,6 @@ export function WalletStatusClient() {
   const [claiming, setClaiming] = useState(false);
   const [sending, setSending] = useState(false);
   const [openingReceive, setOpeningReceive] = useState(false);
-  const [loadingTxs, setLoadingTxs] = useState(false);
-  const [transfers, setTransfers] = useState<UserTransfer[]>([]);
-    
   const [claimingTransport, setClaimingTransport] = useState(false);
   const [transferring, setTransferring] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +105,6 @@ export function WalletStatusClient() {
   const tokenAddress = process.env.NEXT_PUBLIC_CLPC_TOKEN_ADDRESS;
   const claimAddress = process.env.NEXT_PUBLIC_CLPC_CLAIM_ADDRESS;
   const transportAddress = process.env.NEXT_PUBLIC_TRANSPORT_ADDRESS;
-  const tokenAddress = process.env.NEXT_PUBLIC_CLPC_TOKEN_ADDRESS;
   const forwarderAddress = process.env.NEXT_PUBLIC_FORWARDER_ADDRESS;
   const forwarderName = process.env.NEXT_PUBLIC_FORWARDER_NAME ?? "AdmapuForwarder";
 
@@ -253,14 +250,6 @@ export function WalletStatusClient() {
       setTransferMessage(null);
       setError(null);
 
-      const provider =
-        typeof window !== "undefined" && (window as { ethereum?: unknown }).ethereum
-          ? ((window as { ethereum?: unknown }).ethereum as {
-              request: (args: { method: string; params?: unknown }) => Promise<unknown>;
-            })
-          : ((await wallet.getEthereumProvider()) as {
-              request: (args: { method: string; params?: unknown }) => Promise<unknown>;
-            });
       const { provider, signerAddress } = await getSigningContext();
       const claimData = encodeFunctionData({
         abi: claimAbi,
@@ -543,7 +532,7 @@ export function WalletStatusClient() {
 
       const client = createPublicClient({
         chain: sepolia,
-        transport: rpc ? http(rpc) : http(),
+        transport: http(),
       });
       const decimals = await client.readContract({
         address: getAddress(tokenAddress),
