@@ -35,10 +35,8 @@ export default async function NetworkStatusPage() {
     const status = await fetchNetworkStatus();
 
     return (
-      <main className="landing">
+      <main id="main" className="landing">
         <div className="scene" aria-hidden="true" />
-        <div className="network-overlay" aria-hidden="true" />
-        <div className="vignette" aria-hidden="true" />
 
         <section className="glass-card">
           <div className="status-intro">
@@ -89,10 +87,8 @@ export default async function NetworkStatusPage() {
     );
   } catch (error) {
     return (
-      <main className="landing">
+      <main id="main" className="landing">
         <div className="scene" aria-hidden="true" />
-        <div className="network-overlay" aria-hidden="true" />
-        <div className="vignette" aria-hidden="true" />
 
         <section className="glass-card">
           <div className="status-intro">

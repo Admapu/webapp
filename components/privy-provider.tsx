@@ -15,9 +15,9 @@ export function PrivyProviderClient({ children }: { children: React.ReactNode })
       appId={appId}
       config={{
         appearance: {
-          theme: "dark",
-          accentColor: "#4f46e5",
-          logo: undefined,
+          theme: "light",
+          accentColor: "#285b45",
+          logo: "/admapu-symbol.svg",
         },
         defaultChain: sepolia,
         supportedChains: [sepolia],

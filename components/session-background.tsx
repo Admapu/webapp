@@ -59,14 +59,14 @@ function SessionBackgroundWithPrivy() {
     setBackground(nextBackground);
   }, [sessionKey]);
 
-  return <div aria-hidden="true" className="scene" style={{ backgroundImage: `linear-gradient(rgba(10, 1, 40, 0.38), rgba(10, 1, 40, 0.56)), url('${background}')` }} />;
+  return <div aria-hidden="true" className="scene" style={{ backgroundImage: `linear-gradient(180deg, rgba(17,43,39,0.02) 45%, rgba(17,43,39,0.6)), url('${background}')` }} />;
 }
 
 export function SessionBackground() {
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
   if (!appId) {
-    return <div aria-hidden="true" className="scene" style={{ backgroundImage: `linear-gradient(rgba(10, 1, 40, 0.38), rgba(10, 1, 40, 0.56)), url('${DEFAULT_BACKGROUND}')` }} />;
+    return <div aria-hidden="true" className="scene" style={{ backgroundImage: `linear-gradient(180deg, rgba(17,43,39,0.02) 45%, rgba(17,43,39,0.6)), url('${DEFAULT_BACKGROUND}')` }} />;
   }
 
   return <SessionBackgroundWithPrivy />;
